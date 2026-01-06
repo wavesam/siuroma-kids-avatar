@@ -13,6 +13,8 @@ import { CLOSET, SNAP_POSITIONS } from "../closetData";
 import { OutfitTab } from "./OutfitTab";
 import { BodyTab } from "./BodyTab";
 import { AccessoriesTab } from "./AccessoriesTab";
+import { CanvasTab } from "./CanvasTab";
+import { BackgroundTab } from "./BackgroundTab";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
@@ -21,12 +23,16 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
   { key: "body", label: "Body", number: 1 },
   { key: "outfit", label: "Outfit", number: 2 },
   { key: "accessories", label: "Accessories", number: 3 },
+  { key: "canvas", label: "Canvas", number: 4 },
+  { key: "background", label: "Background", number: 5 },
 ];
 
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
   body: { snapItems: false },
   outfit: { snapItems: true },
-  accessories: { snapItems: false },
+  accessories: { snapItems: true },
+  canvas: { snapItems: false },
+  background: { snapItems: false },
 };
 
 export function AvatarStudio() {
@@ -249,6 +255,12 @@ export function AvatarStudio() {
       break;
     case "accessories":
       TabContent = <AccessoriesTab {...sharedTabProps} />;
+      break;
+    case "canvas":
+      TabContent = <CanvasTab {...sharedTabProps} />;
+      break;
+    case "background":
+      TabContent = <BackgroundTab {...sharedTabProps} />;
       break;
     default:
       TabContent = null;

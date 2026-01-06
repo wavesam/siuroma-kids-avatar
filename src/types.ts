@@ -1,5 +1,5 @@
 // TabKey is required for ClosetItem.tab
-export type TabKey = "body" | "outfit" | "accessories";
+export type TabKey = "body" | "outfit" | "accessories" | "canvas" | "background";
 
 export type Gender = "male" | "female";
 
