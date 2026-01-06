@@ -91,6 +91,12 @@ export function Closet({
               className="closetItem"
               draggable
               onDragStart={(e) => {
+                console.log("🎒 [Closet onDragStart] 从衣柜开始拖拽", {
+                  id: it.id,
+                  name: it.name,
+                  type: it.type,
+                  occupation: it.occupation,
+                });
                 onStartDrag(it.id);
                 // Set the drag image to empty so we can use our custom DragGhost
                 e.dataTransfer.setDragImage(emptyImg, 0, 0);

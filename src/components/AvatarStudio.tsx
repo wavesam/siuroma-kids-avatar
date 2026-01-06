@@ -57,8 +57,17 @@ export function AvatarStudio() {
   const shouldAcceptDrop = (key: string) => {
     const now = performance.now();
     const last = lastDropRef.current;
-    if (last && last.key === key && now - last.t < 250) return false;
+    if (last && last.key === key && now - last.t < 500) {
+      console.log("❌ [shouldAcceptDrop] 阻止重复放置", {
+        key,
+        timeSinceLast: now - last.t,
+        lastTime: last.t,
+        currentTime: now,
+      });
+      return false;
+    }
     lastDropRef.current = { key, t: now };
+    console.log("✅ [shouldAcceptDrop] 允许放置", { key, time: now });
     return true;
   };
 
@@ -88,21 +97,39 @@ export function AvatarStudio() {
   const replaceSameType = snapItems;
   const showTrash = !snapItems;
 
+  // Add a ref to prevent duplicate execution of placeClosetItem
+  const isPlacingItemRef = React.useRef(false);
+
   const placeClosetItem = (
     closetId: string,
     targetTab: TabKey,
     dropX?: number,
     dropY?: number
   ) => {
+    // Prevent duplicate execution
+    if (isPlacingItemRef.current) {
+      console.log("❌ [placeClosetItem] 阻止：正在处理另一个放置操作");
+      return;
+    }
+
     const item = CLOSET.find((c) => c.id === closetId && c.tab === targetTab);
-    if (!item) return;
+    if (!item) {
+      console.log("❌ [placeClosetItem] 未找到物品", { closetId, targetTab });
+      return;
+    }
 
     const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
     const ry = typeof dropY === "number" ? Math.round(dropY) : -1;
     const dedupeKey = `${targetTab}:${closetId}:${
       snapItems ? "snap" : "free"
     }:${rx},${ry}`;
-    if (!shouldAcceptDrop(dedupeKey)) return;
+    if (!shouldAcceptDrop(dedupeKey)) {
+      console.log("❌ [placeClosetItem] 重复放置被阻止", { dedupeKey });
+      return;
+    }
+
+    // Mark as processing
+    isPlacingItemRef.current = true;
 
     let x: number, y: number;
     if (!snapItems && typeof dropX === "number" && typeof dropY === "number") {
@@ -117,16 +144,53 @@ export function AvatarStudio() {
       y = snapConfig.y * CANVAS_HEIGHT - item.h / 2;
     }
 
+    console.log("✅ [placeClosetItem] 放置物品到画布", {
+      closetId,
+      name: item.name,
+      type: item.type,
+      position: { x, y },
+      snapItems,
+      targetTab,
+    });
+
+    // Use a single state update instead of nested updates
+    // This prevents React from calling the callback multiple times
     setTopZ((z) => {
       const newZ = z + 1;
       setPlaced((current) => {
+        // Double-check inside the callback to prevent duplicate additions
+        const existingInstance = current.find(
+          (p) => p.id === closetId && Math.abs(p.x - x) < 5 && Math.abs(p.y - y) < 5
+        );
+        if (existingInstance) {
+          console.log("❌ [placeClosetItem setPlaced] 阻止：相同位置已有实例", {
+            existingInstance: existingInstance.instanceId,
+            newPosition: { x, y },
+          });
+          isPlacingItemRef.current = false;
+          return current;
+        }
+
         let filtered = current;
         if (replaceSameType) {
           filtered = filtered.filter((p) => p.type !== item.type);
         }
+        const newInstanceId = crypto.randomUUID();
+        console.log("📝 [placeClosetItem setPlaced] 创建新实例", {
+          instanceId: newInstanceId,
+          closetId,
+          name: item.name,
+          totalPlaced: filtered.length + 1,
+        });
+        
+        // Reset the flag after a short delay
+        setTimeout(() => {
+          isPlacingItemRef.current = false;
+        }, 100);
+        
         return [
           ...filtered,
-          { ...item, instanceId: crypto.randomUUID(), x, y, z: newZ },
+          { ...item, instanceId: newInstanceId, x, y, z: newZ },
         ];
       });
       return newZ;
