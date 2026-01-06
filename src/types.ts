@@ -1,6 +1,10 @@
+// TabKey is required for ClosetItem.tab
+export type TabKey = "body" | "outfit" | "accessories";
+
 export type Gender = "male" | "female";
 
 export type ClosetItemType =
+  | "body"
   | "hair"
   | "hat"
   | "glasses"
@@ -18,14 +22,16 @@ export interface ClosetItem {
   occupation?: string;
 
   // Used for snapping (hair/trousers/etc)
-  type?: ClosetItemType;
+  type?: ClosetItemType; // For item category, e.g. "body", "shirt", etc
 
   w: number;
   h: number;
   src: string;
 
-  // NEW: restrict to specific gender, or allow both with "unisex"
+  // restrict to specific gender, or allow both with "unisex"
   gender?: Gender | "unisex";
+
+  tab: TabKey; // <-- Tab assignment for item
 }
 
 export interface PlacedItem extends ClosetItem {

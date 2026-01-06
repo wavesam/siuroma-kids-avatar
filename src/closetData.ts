@@ -13,24 +13,47 @@ export const CLOSET: ClosetItem[] = [
     h: 150,
     src: boyHair1,
     gender: "male",
+    tab: "body", // This item appears in the Body tab
   },
   {
     id: "boyHair2",
     name: "Boy Hair Style 2",
-    occupation: "fashion",
+    occupation: "hair",
     type: "hair",
     w: 220,
     h: 150,
     src: boyHair2,
     gender: "male",
+    tab: "body",
   },
-  // Add more items as needed...
+  // EXAMPLE: more items assigned to other tabs:
+  // {
+  //   id: "chefJacket",
+  //   name: "Chef Jacket",
+  //   occupation: "chef",
+  //   type: "jacket",
+  //   w: 180,
+  //   h: 120,
+  //   src: chefJacketImg,
+  //   gender: "unisex",
+  //   tab: "outfit", // Outfit tab
+  // },
+  // {
+  //   id: "artistHat",
+  //   name: "Artist Hat",
+  //   occupation: "artist",
+  //   type: "hat",
+  //   w: 120,
+  //   h: 80,
+  //   src: artistHatImg,
+  //   gender: "female",
+  //   tab: "accessories", // Accessories tab
+  // },
 ];
 
-// Snap positions for different types
 export const SNAP_POSITIONS: Record<ClosetItemType, { x: number; y: number }> =
   {
-    hair: { x: 0.5, y: 0.08 },
+    hair: { x: 0.5, y: 0.2 },
     hat: { x: 0.5, y: 0.05 },
     glasses: { x: 0.5, y: 0.22 },
     shirt: { x: 0.5, y: 0.4 },
@@ -39,4 +62,5 @@ export const SNAP_POSITIONS: Record<ClosetItemType, { x: number; y: number }> =
     pants: { x: 0.5, y: 0.6 },
     shoes: { x: 0.5, y: 0.88 },
     accessory: { x: 0.5, y: 0.5 },
+    body: { x: 0, y: 0 },
   };

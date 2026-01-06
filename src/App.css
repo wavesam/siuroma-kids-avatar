@@ -4,22 +4,15 @@
   --bg1: #b8e7ff;
   --bg2: #ffd6f3;
   --bg3: #fff1b8;
-
   --ink: #24324a;
   --muted: #5a6b86;
-
   --card: #ffffffcc;
   --border: #e7ecff;
-
   --shadow: 0 14px 30px rgba(20, 30, 60, 0.14);
   --shadow2: 0 10px 18px rgba(20, 30, 60, 0.1);
-
   --radius: 18px;
-  --occupation-bar-bg: #f7fafd;
-  --occupation-bar-border: #d9e6fa;
-  --occupation-bar-radius: 14px;
-  --occupation-bar-font: 14px;
-  --occupation-bar-label: #24324a;
+  --closet-item-bg: rgba(255, 255, 255, 0.92);
+  --closet-item-hover-bg: rgba(223, 223, 223, 0.92);
 }
 
 * {
@@ -29,10 +22,7 @@
 body {
   margin: 0;
   color: var(--ink);
-  background: radial-gradient(circle at 15% 15%, #ffffff 0 16%, transparent 17%),
-    radial-gradient(circle at 85% 25%, #ffffff 0 14%, transparent 15%),
-    radial-gradient(circle at 35% 80%, #ffffff 0 15%, transparent 16%),
-    linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+  background: gray;
   background-attachment: fixed;
   font-family: "Fredoka", sans-serif;
 }
@@ -49,6 +39,7 @@ body {
   border-radius: var(--radius);
 }
 
+/* Headings */
 h1,
 h2 {
   margin: 0 0 10px;
@@ -81,12 +72,21 @@ button:active {
   transform: translateY(2px) scale(0.99);
 }
 
+/* Studio layout */
 .studio {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 0;
+  padding: 0;
+}
+
+.studioMain {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
 }
 
 .studioTopBar {
@@ -98,47 +98,156 @@ button:active {
   left: 30px;
   z-index: 10;
 }
-
 .hint {
   color: var(--muted);
   font-size: 14px;
 }
 
+/* Tabs Styling */
+.studioTabsBar {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  height: 100px;
+  width: 100%;
+  background: #eef3fa;
+  box-shadow: 0 1px 0 #aaccec;
+  margin-top: 0;
+  z-index: 2;
+}
+
+/* Tab Button with Big Number on Left */
+.studioTab {
+  flex: 1 1 0;
+  border: none;
+  background: #f7faff;
+  color: #444;
+  padding: 0;
+  font-weight: 500;
+  font-size: inherit;
+  height: 100%;
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, font-weight 0.17s;
+  box-shadow: none;
+  margin: 0;
+  border-bottom: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  position: relative;
+}
+
+.studioTabNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-right: 14px;
+  min-width: 40px;
+  height: 100%;
+  letter-spacing: -2px;
+  font-family: "Fredoka", sans-serif;
+}
+
+.studioTabLabel {
+  display: flex;
+  align-items: center;
+  font-size: 1.11rem;
+  font-weight: inherit;
+  color: inherit;
+  height: 100%;
+}
+
+/* Selected tab */
+.studioTab.tabSelected,
+.studioTab[aria-selected="true"] {
+  background: #fff;
+  color: #1976d2;
+  font-size: 1.22rem;
+  font-weight: 700;
+  z-index: 2;
+  box-shadow: inset 0 -5px 0 #2196f3;
+}
+
+.studioTab:focus-visible {
+  outline: 2.5px solid #2196f3;
+  outline-offset: -2.5px;
+  background: #e6f2ff;
+}
+
+.studioTab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+/* Slight hover interaction */
+.studioTab:hover:not(.tabSelected):not([aria-selected="true"]) {
+  background: #e6f2ff;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.studioTab:active {
+  background: #dbefff;
+  color: #1565c0;
+  transform: scale(0.99) translateY(1px);
+}
+
+/* Responsive tweaks for tabs */
+@media (max-width: 700px) {
+  .studioTab {
+    font-size: 1rem;
+    min-width: 75px;
+  }
+  .studioTabsBar {
+    height: 58px;
+  }
+  .studioTabNumber {
+    font-size: 1.4rem;
+    min-width: 29px;
+    margin-right: 8px;
+  }
+}
+
+/* Studio Body (main area) */
 .studioBody {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   min-height: 0;
   gap: 12px;
+  padding: 0 16px 16px 16px;
+  flex-direction: row;
 }
 
 /* Left (canvas) */
 .left {
-  flex: 2;
+  flex: 2 1 0%;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px;
 }
-
-/* Right (closet) */
 .right {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 300px;
-  min-height: 0; /* allows internal scrolling */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/*
-  Important: this is the stable positioning context for placed items.
-  Items are absolutely positioned inside this relative container.
-*/
+/* Avatar positioning context */
 .avatarCanvas {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
-
 .avatarStage {
   position: absolute;
   left: 50%;
@@ -148,7 +257,6 @@ button:active {
   height: auto;
   pointer-events: none;
 }
-
 .placedItem {
   position: absolute;
   cursor: grab;
@@ -158,7 +266,6 @@ button:active {
 .placedItem:active {
   cursor: grabbing;
 }
-
 .placedItemShell {
   width: 100%;
   height: 100%;
@@ -170,8 +277,9 @@ button:active {
   display: block;
 }
 
-/* Closet */
+/* Closet grid and items */
 .closet {
+  margin-top: 10px;
   padding: 20px;
   background-color: white;
   height: 100%;
@@ -193,7 +301,7 @@ button:active {
 }
 
 .closetItem {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--closet-item-bg);
   border: 2px dashed rgba(36, 50, 74, 0.18);
   border-radius: 16px;
   padding: 10px;
@@ -201,10 +309,16 @@ button:active {
   place-items: center;
   gap: 8px;
   transition: border-style 0.15s, transform 0.11s;
+  cursor: pointer;
+}
+.closetItem:active,
+.closetItem:focus {
+  transform: scale(0.99) translateY(2px);
+  outline: 2px solid var(--border);
 }
 .closetItem:hover {
   transform: translateY(-5px);
-  background: rgba(223, 223, 223, 0.92);
+  background: var(--closet-item-hover-bg);
   border-style: solid;
   cursor: grab;
 }
@@ -215,14 +329,15 @@ button:active {
   display: grid;
   place-items: center;
 }
+.closetPreview img,
 .closetPreview svg {
-  width: 92%;
-  height: 92%;
+  width: 85%;
+  height: 85%;
   display: block;
 }
 
 .closetLabel {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: rgba(36, 50, 74, 0.85);
   text-align: center;
@@ -237,7 +352,6 @@ button:active {
   opacity: 0.85;
   filter: drop-shadow(0 14px 14px rgba(20, 30, 60, 0.18));
 }
-
 .dragGhostInner {
   width: 100%;
   height: 100%;
@@ -256,7 +370,6 @@ button:active {
   display: none;
 }
 
-/* Optional: better mobile behavior */
 @media (max-width: 980px) {
   .studioBody {
     flex-direction: column;
