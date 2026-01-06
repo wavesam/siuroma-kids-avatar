@@ -1,6 +1,3 @@
-// ==========================================
-// FILE 1: AvatarStudio.tsx
-// ==========================================
 import React, { type JSX } from "react";
 import type {
   ClosetItem,
@@ -9,7 +6,7 @@ import type {
   TabKey,
   ClosetItemType,
 } from "../types";
-import { CLOSET, SNAP_POSITIONS } from "../closetData";
+import { CLOSET_DATA_BY_TAB, SNAP_POSITIONS } from "../closetData";
 import { OutfitTab } from "./OutfitTab";
 import { BodyTab } from "./BodyTab";
 import { AccessoriesTab } from "./AccessoriesTab";
@@ -18,6 +15,7 @@ import { BackgroundTab } from "./BackgroundTab";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
+const CANVAS_ASPECT = CANVAS_WIDTH / CANVAS_HEIGHT;
 
 const TABS: { key: TabKey; label: string; number: number }[] = [
   { key: "body", label: "Body", number: 1 },
@@ -28,17 +26,25 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
 ];
 
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
-  body: { snapItems: false },
+  body: { snapItems: true },
   outfit: { snapItems: true },
   accessories: { snapItems: true },
   canvas: { snapItems: false },
   background: { snapItems: false },
 };
 
+type SnapPlacedItem = PlacedItem & {
+  isSnapped?: boolean;
+  snapAnchor?: { x: number; y: number };
+  xNorm?: number;
+  yNorm?: number;
+  sizeNorm?: number;
+};
+
 export function AvatarStudio() {
   const [gender, setGender] = React.useState<Gender>("male");
   const [tab, setTab] = React.useState<TabKey>("body");
-  const [placed, setPlaced] = React.useState<PlacedItem[]>([]);
+  const [placed, setPlaced] = React.useState<SnapPlacedItem[]>([]);
   const [topZ, setTopZ] = React.useState(1);
 
   const [draggingClosetId, setDraggingClosetId] = React.useState<string | null>(
@@ -54,26 +60,81 @@ export function AvatarStudio() {
     null
   );
 
+  const [canvasSize, setCanvasSize] = React.useState({
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+  });
+
+  React.useLayoutEffect(() => {
+    const MARGIN = 48;
+    const HEADER_RESERVE = 220;
+
+    const updateSize = () => {
+      const maxWidth = Math.max(320, window.innerWidth - MARGIN * 2);
+      const maxHeight = Math.max(
+        320,
+        window.innerHeight - HEADER_RESERVE - MARGIN * 2
+      );
+
+      const widthByHeight = maxHeight * CANVAS_ASPECT;
+      const heightByWidth = maxWidth / CANVAS_ASPECT;
+
+      let width = maxWidth;
+      let height = heightByWidth;
+
+      if (widthByHeight <= maxWidth) {
+        width = widthByHeight;
+        height = maxHeight;
+      }
+
+      setCanvasSize({
+        width: Math.round(width),
+        height: Math.round(height),
+      });
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  // Rehydrate all items (snapped or free) when the canvas resizes using normalized data.
+  React.useEffect(() => {
+    setPlaced((current) =>
+      current.map((p) => {
+        const sizeNorm = p.sizeNorm ?? (p.size ? p.size / canvasSize.width : 0);
+        const xNorm = p.xNorm ?? (p.x ?? 0) / canvasSize.width;
+        const yNorm = p.yNorm ?? (p.y ?? 0) / canvasSize.height;
+
+        const sizePx = sizeNorm * canvasSize.width;
+        const xPx = xNorm * canvasSize.width;
+        const yPx = yNorm * canvasSize.height;
+
+        return {
+          ...p,
+          sizeNorm,
+          xNorm,
+          yNorm,
+          size: sizePx,
+          x: xPx,
+          y: yPx,
+        };
+      })
+    );
+  }, [canvasSize.width, canvasSize.height]);
+
   React.useEffect(() => {
     draggingClosetIdRef.current = draggingClosetId;
   }, [draggingClosetId]);
 
-  // Dedupe drops
   const lastDropRef = React.useRef<{ key: string; t: number } | null>(null);
   const shouldAcceptDrop = (key: string) => {
     const now = performance.now();
     const last = lastDropRef.current;
     if (last && last.key === key && now - last.t < 500) {
-      console.log("❌ [shouldAcceptDrop] 阻止重复放置", {
-        key,
-        timeSinceLast: now - last.t,
-        lastTime: last.t,
-        currentTime: now,
-      });
       return false;
     }
     lastDropRef.current = { key, t: now };
-    console.log("✅ [shouldAcceptDrop] 允许放置", { key, time: now });
     return true;
   };
 
@@ -103,7 +164,6 @@ export function AvatarStudio() {
   const replaceSameType = snapItems;
   const showTrash = !snapItems;
 
-  // Add a ref to prevent duplicate execution of placeClosetItem
   const isPlacingItemRef = React.useRef(false);
 
   const placeClosetItem = (
@@ -112,67 +172,62 @@ export function AvatarStudio() {
     dropX?: number,
     dropY?: number
   ) => {
-    // Prevent duplicate execution
-    if (isPlacingItemRef.current) {
-      console.log("❌ [placeClosetItem] 阻止：正在处理另一个放置操作");
-      return;
-    }
+    if (isPlacingItemRef.current) return;
 
-    const item = CLOSET.find((c) => c.id === closetId && c.tab === targetTab);
-    if (!item) {
-      console.log("❌ [placeClosetItem] 未找到物品", { closetId, targetTab });
-      return;
-    }
+    const tabItems = CLOSET_DATA_BY_TAB[targetTab] || [];
+    const item = tabItems.find((c) => c.id === closetId);
+
+    if (!item) return;
 
     const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
     const ry = typeof dropY === "number" ? Math.round(dropY) : -1;
-    const dedupeKey = `${targetTab}:${closetId}:${
+    const dedupeKey = `${targetTab}:${closetId}: ${
       snapItems ? "snap" : "free"
-    }:${rx},${ry}`;
-    if (!shouldAcceptDrop(dedupeKey)) {
-      console.log("❌ [placeClosetItem] 重复放置被阻止", { dedupeKey });
-      return;
-    }
+    }: ${rx},${ry}`;
+    if (!shouldAcceptDrop(dedupeKey)) return;
 
-    // Mark as processing
     isPlacingItemRef.current = true;
 
-    let x: number, y: number;
+    const resolveSnapAnchor = (cfg: { x: number; y: number }) => ({
+      x: cfg.x === 0 ? 0.5 : cfg.x,
+      y: cfg.y === 0 ? 0.5 : cfg.y,
+    });
+
+    let xNorm: number,
+      yNorm: number,
+      sizeNorm: number,
+      snapAnchor: { x: number; y: number } | undefined;
+
+    // size normalized to canvas width
+    sizeNorm = item.size / canvasSize.width;
+
     if (!snapItems && typeof dropX === "number" && typeof dropY === "number") {
-      x = dropX - item.w / 2;
-      y = dropY - item.h / 2;
+      xNorm = dropX / canvasSize.width - sizeNorm / 2;
+      yNorm = dropY / canvasSize.height - sizeNorm / 2;
     } else {
       const snapConfig = SNAP_POSITIONS[item.type as ClosetItemType] ?? {
         x: 0.5,
         y: 0.5,
       };
-      x = snapConfig.x * CANVAS_WIDTH - item.w / 2;
-      y = snapConfig.y * CANVAS_HEIGHT - item.h / 2;
+      snapAnchor = resolveSnapAnchor(snapConfig);
+      xNorm = snapAnchor.x - sizeNorm / 2;
+      yNorm = snapAnchor.y - sizeNorm / 2;
     }
 
-    console.log("✅ [placeClosetItem] 放置物品到画布", {
-      closetId,
-      name: item.name,
-      type: item.type,
-      position: { x, y },
-      snapItems,
-      targetTab,
-    });
+    const x = xNorm * canvasSize.width;
+    const y = yNorm * canvasSize.height;
+    const sizePx = sizeNorm * canvasSize.width;
 
-    // Use a single state update instead of nested updates
-    // This prevents React from calling the callback multiple times
     setTopZ((z) => {
       const newZ = z + 1;
       setPlaced((current) => {
-        // Double-check inside the callback to prevent duplicate additions
         const existingInstance = current.find(
-          (p) => p.id === closetId && Math.abs(p.x - x) < 5 && Math.abs(p.y - y) < 5
+          (p) =>
+            p.id === closetId &&
+            Math.abs((p.xNorm ?? 0) - xNorm) < 0.001 &&
+            Math.abs((p.yNorm ?? 0) - yNorm) < 0.001
         );
         if (existingInstance) {
-          console.log("❌ [placeClosetItem setPlaced] 阻止：相同位置已有实例", {
-            existingInstance: existingInstance.instanceId,
-            newPosition: { x, y },
-          });
           isPlacingItemRef.current = false;
           return current;
         }
@@ -182,21 +237,26 @@ export function AvatarStudio() {
           filtered = filtered.filter((p) => p.type !== item.type);
         }
         const newInstanceId = crypto.randomUUID();
-        console.log("📝 [placeClosetItem setPlaced] 创建新实例", {
-          instanceId: newInstanceId,
-          closetId,
-          name: item.name,
-          totalPlaced: filtered.length + 1,
-        });
-        
-        // Reset the flag after a short delay
+
         setTimeout(() => {
           isPlacingItemRef.current = false;
         }, 100);
-        
+
         return [
           ...filtered,
-          { ...item, instanceId: newInstanceId, x, y, z: newZ },
+          {
+            ...item,
+            instanceId: newInstanceId,
+            x,
+            y,
+            size: sizePx,
+            z: newZ,
+            isSnapped: snapItems,
+            snapAnchor,
+            xNorm,
+            yNorm,
+            sizeNorm,
+          },
         ];
       });
       return newZ;
@@ -213,10 +273,12 @@ export function AvatarStudio() {
     setPlaced((current) => current.filter((item) => item.id !== closetId));
   };
 
-  const filteredCloset = CLOSET.filter((item) => item.tab === tab);
+  const filteredCloset = CLOSET_DATA_BY_TAB[tab] || [];
 
   const previewItem = draggingClosetId
-    ? CLOSET.find((c) => c.id === draggingClosetId) ?? null
+    ? Object.values(CLOSET_DATA_BY_TAB)
+        .flat()
+        .find((c) => c.id === draggingClosetId) ?? null
     : null;
 
   const sharedTabProps = {
@@ -232,8 +294,8 @@ export function AvatarStudio() {
     topZ,
     setTopZ,
     closet: filteredCloset,
-    canvasWidth: CANVAS_WIDTH,
-    canvasHeight: CANVAS_HEIGHT,
+    canvasWidth: canvasSize.width,
+    canvasHeight: canvasSize.height,
     placeClosetItem,
     snapItems,
     showTrash,
@@ -266,10 +328,8 @@ export function AvatarStudio() {
       TabContent = null;
   }
 
-  // FIXED: Removed "|| true" which was forcing trash to always show
   const showTrashCan = showTrash && (draggingClosetId || draggingPlacedId);
 
-  // For HTML5 drops (closet drag) the trash can still works.
   const handleTrashDrop = () => {
     if (draggingPlacedId) {
       removePlacedByInstanceId(draggingPlacedId);
@@ -284,11 +344,21 @@ export function AvatarStudio() {
     }
   };
 
+  const totalTabs = TABS.length;
+  const selectedTabNumber =
+    TABS.find((t) => t.key === tab)?.number ?? Math.max(1, totalTabs);
+  const progressPercent = (selectedTabNumber / totalTabs) * 100;
+
+  const tabProgressStyle = React.useMemo(
+    () => ({ "--tab-progress": `${progressPercent}%` } as React.CSSProperties),
+    [progressPercent]
+  );
+
   return (
     <div className="studio">
       <div className="studioMain">
         <div className="studioTopBar" />
-        <div className="studioTabsBar">
+        <div className="studioTabsBar" style={tabProgressStyle}>
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -334,8 +404,8 @@ function DragGhost({
       style={{
         left: pos.x,
         top: pos.y,
-        width: item.w,
-        height: item.h,
+        width: item.size,
+        height: "auto",
         position: "fixed",
         pointerEvents: "none",
         zIndex: 99999,
@@ -345,7 +415,7 @@ function DragGhost({
       <img
         src={item.src}
         alt={item.name}
-        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        style={{ width: "100%", height: "auto", objectFit: "contain" }}
       />
     </div>
   );

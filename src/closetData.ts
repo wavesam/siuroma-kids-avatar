@@ -1,59 +1,13 @@
-import type { ClosetItem, ClosetItemType } from "./types";
-import boyHair1 from "./assets/boy hair 1.png";
-import boyHair2 from "./assets/boy hair 2.png";
-
-// List of all closet items
-export const CLOSET: ClosetItem[] = [
-  {
-    id: "boyHair1",
-    name: "Boy Hair Style 1",
-    occupation: "fashion",
-    type: "hair",
-    w: 220,
-    h: 150,
-    src: boyHair1,
-    gender: "male",
-    tab: "body", // This item appears in the Body tab
-  },
-  {
-    id: "boyHair2",
-    name: "Boy Hair Style 2",
-    occupation: "hair",
-    type: "hair",
-    w: 220,
-    h: 150,
-    src: boyHair2,
-    gender: "male",
-    tab: "body",
-  },
-  // EXAMPLE: more items assigned to other tabs:
-  // {
-  //   id: "chefJacket",
-  //   name: "Chef Jacket",
-  //   occupation: "chef",
-  //   type: "jacket",
-  //   w: 180,
-  //   h: 120,
-  //   src: chefJacketImg,
-  //   gender: "unisex",
-  //   tab: "outfit", // Outfit tab
-  // },
-  // {
-  //   id: "artistHat",
-  //   name: "Artist Hat",
-  //   occupation: "artist",
-  //   type: "hat",
-  //   w: 120,
-  //   h: 80,
-  //   src: artistHatImg,
-  //   gender: "female",
-  //   tab: "accessories", // Accessories tab
-  // },
-];
+import type { ClosetItemType, TabKey, ClosetItem } from "./types";
+import { bodyClosetData } from "./data/bodyClosetData";
+import { outfitClosetData } from "./data/outfitClosetData";
+import { accessoriesClosetData } from "./data/accessoriesClosetData";
+import { canvasClosetData } from "./data/canvasClosetData";
+import { backgroundClosetData } from "./data/backgroundClosetData";
 
 export const SNAP_POSITIONS: Record<ClosetItemType, { x: number; y: number }> =
   {
-    hair: { x: 0.5, y: 0.2 },
+    hair: { x: 0, y: 0 },
     hat: { x: 0.5, y: 0.05 },
     glasses: { x: 0.5, y: 0.22 },
     shirt: { x: 0.5, y: 0.4 },
@@ -62,5 +16,18 @@ export const SNAP_POSITIONS: Record<ClosetItemType, { x: number; y: number }> =
     pants: { x: 0.5, y: 0.6 },
     shoes: { x: 0.5, y: 0.88 },
     accessory: { x: 0.5, y: 0.5 },
+    // NOTE: x:0, y:0 now resolves to canvas center in AvatarStudio
     body: { x: 0, y: 0 },
   };
+
+// Organized lookup object
+export const CLOSET_DATA_BY_TAB: Record<TabKey, ClosetItem[]> = {
+  body: bodyClosetData,
+  outfit: outfitClosetData,
+  accessories: accessoriesClosetData,
+  canvas: canvasClosetData,
+  background: backgroundClosetData,
+};
+
+// Flat array for backwards compatibility
+export const CLOSET = Object.values(CLOSET_DATA_BY_TAB).flat();

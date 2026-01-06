@@ -35,7 +35,6 @@ export function OutfitTab(props: OutfitTabProps) {
     gender,
     tab,
     placed,
-    setGender, // kept for parity (not used here)
     setPlaced,
     setDraggingClosetId,
     setDragPos,
@@ -86,8 +85,8 @@ export function OutfitTab(props: OutfitTabProps) {
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          width={canvasWidth}
-          height={canvasHeight}
+          size={300}
+          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}

@@ -1,18 +1,26 @@
 @import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap");
 
+/* Theme tokens */
 :root {
-  --bg1: #b8e7ff;
-  --bg2: #ffd6f3;
-  --bg3: #fff1b8;
-  --ink: #24324a;
-  --muted: #5a6b86;
-  --card: #ffffffcc;
-  --border: #e7ecff;
-  --shadow: 0 14px 30px rgba(20, 30, 60, 0.14);
-  --shadow2: 0 10px 18px rgba(20, 30, 60, 0.1);
-  --radius: 18px;
-  --closet-item-bg: rgba(255, 255, 255, 0.92);
-  --closet-item-hover-bg: rgba(223, 223, 223, 0.92);
+  --bg1: #c9f1ff;
+  --bg2: #ffdff7;
+  --bg3: #fff6c9;
+  --ink: #1d2b44;
+  --muted: #5f6c85;
+  --card: rgba(255, 255, 255, 0.92);
+  --border: #e6edff;
+  --shadow: 0 16px 36px rgba(22, 43, 88, 0.16);
+  --shadow2: 0 12px 22px rgba(22, 43, 88, 0.12);
+  --radius: 20px;
+  --closet-item-bg: rgba(255, 255, 255, 0.94);
+  --closet-item-hover-bg: rgba(243, 248, 255, 0.96);
+  --brand-1: #1e9bff;
+  --brand-2: #5c5fff;
+  --brand-3: #ff7ad1;
+  --brand-4: #ffd166;
+  --success: #4cd691;
+  --danger: #f25f5c;
+  --tab-progress-height: 10px;
 }
 
 * {
@@ -22,9 +30,15 @@
 body {
   margin: 0;
   color: var(--ink);
-  background: gray;
-  background-attachment: fixed;
   font-family: "Fredoka", sans-serif;
+  background: radial-gradient(
+      circle at 20% 20%,
+      #dff4ff 0,
+      #f7e3ff 40%,
+      #fff 75%
+    ),
+    linear-gradient(135deg, #c9f1ff 0%, #ffdff7 50%, #fff6c9 100%);
+  background-attachment: fixed;
 }
 
 .app {
@@ -33,10 +47,11 @@ body {
 
 .card {
   background: var(--card);
-  backdrop-filter: blur(8px);
-  padding: 14px;
+  backdrop-filter: blur(10px);
+  padding: 16px;
   box-shadow: var(--shadow);
   border-radius: var(--radius);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
 }
 
 /* Headings */
@@ -58,18 +73,28 @@ h2 {
   flex-wrap: wrap;
 }
 
+/* Buttons */
 button {
   padding: 12px 16px;
   border-radius: 999px;
-  border: 2px solid rgba(36, 50, 74, 0.15);
+  border: 2px solid rgba(36, 50, 74, 0.12);
   background: white;
   cursor: pointer;
   font-weight: 700;
   min-height: 44px;
-  transition: transform 0.11s;
+  transition: transform 0.11s, box-shadow 0.16s, background 0.16s;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.04);
+}
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.06);
 }
 button:active {
-  transform: translateY(2px) scale(0.99);
+  transform: translateY(1px) scale(0.99);
+}
+button:focus-visible {
+  outline: 3px solid rgba(30, 155, 255, 0.4);
+  outline-offset: 2px;
 }
 
 /* Studio layout */
@@ -94,10 +119,15 @@ button:active {
   align-items: center;
   gap: 12px;
   position: absolute;
-  top: 30px;
-  left: 30px;
+  top: 24px;
+  left: 24px;
   z-index: 10;
+  pointer-events: none; /* Fix: prevent invisible container from blocking tabs */
 }
+.studioTopBar > * {
+  pointer-events: auto; /* Re-enable clicks for actual buttons inside */
+}
+
 .hint {
   color: var(--muted);
   font-size: 14px;
@@ -110,26 +140,58 @@ button:active {
   align-items: stretch;
   height: 100px;
   width: 100%;
-  background: #eef3fa;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), #eef3fa);
   box-shadow: 0 1px 0 #aaccec;
   margin-top: 0;
   z-index: 2;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer; /* Fix: ensure pointer cursor even on sub-pixel gaps */
 }
 
-/* Tab Button with Big Number on Left */
+/* Progress track */
+.studioTabsBar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--tab-progress-height);
+  background: #d8e7f7;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Progress indicator */
+.studioTabsBar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: var(--tab-progress-height);
+  width: var(--tab-progress, 20%);
+  background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
+  box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.25) inset,
+    0 6px 14px rgba(25, 118, 210, 0.16);
+  transition: width 0.22s ease, background 0.2s ease;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Tab Button */
 .studioTab {
   flex: 1 1 0;
   border: none;
-  background: #f7faff;
-  color: #444;
-  padding: 0;
-  font-weight: 500;
+  background: transparent;
+  color: #44506a;
+  padding: 0 10px;
+  font-weight: 600;
   font-size: inherit;
   height: 100%;
   border-radius: 0;
   outline: none;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, font-weight 0.17s;
+  transition: background 0.18s, color 0.18s, font-weight 0.2s, transform 0.1s;
   box-shadow: none;
   margin: 0;
   border-bottom: 0;
@@ -137,17 +199,23 @@ button:active {
   align-items: stretch;
   justify-content: flex-start;
   position: relative;
+  z-index: 1;
+}
+/* Ensure everything inside triggers pointer */
+.studioTab *,
+.studioTab {
+  cursor: pointer;
 }
 
 .studioTabNumber {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.3rem;
-  font-weight: 700;
-  color: #1976d2;
+  font-size: 2.35rem;
+  font-weight: 800;
+  color: var(--brand-1);
   margin-right: 14px;
-  min-width: 40px;
+  min-width: 44px;
   height: 100%;
   letter-spacing: -2px;
   font-family: "Fredoka", sans-serif;
@@ -156,27 +224,39 @@ button:active {
 .studioTabLabel {
   display: flex;
   align-items: center;
-  font-size: 1.11rem;
+  font-size: 1.13rem;
   font-weight: inherit;
   color: inherit;
-  height: 100%;
 }
 
 /* Selected tab */
 .studioTab.tabSelected,
 .studioTab[aria-selected="true"] {
-  background: #fff;
-  color: #1976d2;
-  font-size: 1.22rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand-2);
+  font-size: 1.2rem;
+  font-weight: 800;
+  z-index: 1;
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.04);
+}
+
+.studioTab:hover:not(.tabSelected):not([aria-selected="true"]) {
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--brand-1);
   font-weight: 700;
-  z-index: 2;
-  box-shadow: inset 0 -5px 0 #2196f3;
+  transform: translateY(-1px);
+}
+
+.studioTab:active {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--brand-2);
+  transform: scale(0.99) translateY(1px);
 }
 
 .studioTab:focus-visible {
-  outline: 2.5px solid #2196f3;
-  outline-offset: -2.5px;
-  background: #e6f2ff;
+  outline: 3px solid rgba(30, 155, 255, 0.35);
+  outline-offset: -2px;
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .studioTab:disabled {
@@ -184,18 +264,9 @@ button:active {
   cursor: not-allowed;
   background: #f5f5f5;
 }
-
-/* Slight hover interaction */
-.studioTab:hover:not(.tabSelected):not([aria-selected="true"]) {
-  background: #e6f2ff;
-  color: #1976d2;
-  font-weight: 600;
-}
-
-.studioTab:active {
-  background: #dbefff;
-  color: #1565c0;
-  transform: scale(0.99) translateY(1px);
+.studioTab:disabled *,
+.studioTab:disabled {
+  cursor: not-allowed;
 }
 
 /* Responsive tweaks for tabs */
@@ -203,14 +274,18 @@ button:active {
   .studioTab {
     font-size: 1rem;
     min-width: 75px;
+    padding: 0 6px;
   }
   .studioTabsBar {
-    height: 58px;
+    height: 64px;
   }
   .studioTabNumber {
-    font-size: 1.4rem;
-    min-width: 29px;
+    font-size: 1.5rem;
+    min-width: 30px;
     margin-right: 8px;
+  }
+  :root {
+    --tab-progress-height: 8px;
   }
 }
 
@@ -219,8 +294,8 @@ button:active {
   flex: 1 1 0;
   display: flex;
   min-height: 0;
-  gap: 12px;
-  padding: 0 16px 16px 16px;
+  gap: 16px;
+  padding: 16px;
   flex-direction: row;
 }
 
@@ -231,7 +306,6 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
 }
 .right {
   flex: 1 1 0%;
@@ -239,6 +313,7 @@ button:active {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 /* Avatar positioning context */
@@ -247,7 +322,16 @@ button:active {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    rgba(233, 241, 255, 0.92)
+  );
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow2);
 }
+
 .avatarStage {
   position: absolute;
   left: 50%;
@@ -269,7 +353,7 @@ button:active {
 .placedItemShell {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 12px 10px rgba(20, 30, 60, 0.18));
+  filter: drop-shadow(0 12px 12px rgba(20, 30, 60, 0.16));
 }
 .placedItemShell svg {
   width: 100%;
@@ -279,48 +363,52 @@ button:active {
 
 /* Closet grid and items */
 .closet {
-  margin-top: 10px;
-  padding: 20px;
-  background-color: white;
+  margin-top: 0;
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow2);
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
+  gap: 12px;
+  overflow: visible;
 }
 
 .closetGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  overflow: auto;
-  padding-top: 16px;
-  padding-bottom: 6px;
-  margin-top: -10px;
+  gap: 14px;
+  overflow: visible;
+  padding: 8px 4px 12px;
 }
 
 .closetItem {
   background: var(--closet-item-bg);
-  border: 2px dashed rgba(36, 50, 74, 0.18);
-  border-radius: 16px;
-  padding: 10px;
+  border: 2px dashed rgba(36, 50, 74, 0.14);
+  border-radius: 18px;
+  padding: 12px;
   display: grid;
   place-items: center;
   gap: 8px;
-  transition: border-style 0.15s, transform 0.11s;
+  transition: border-style 0.15s, transform 0.12s, box-shadow 0.12s,
+    background 0.12s;
   cursor: pointer;
+  box-shadow: 0 10px 20px rgba(22, 43, 88, 0.08);
 }
 .closetItem:active,
 .closetItem:focus {
-  transform: scale(0.99) translateY(2px);
+  transform: scale(0.99) translateY(1px);
   outline: 2px solid var(--border);
 }
 .closetItem:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
   background: var(--closet-item-hover-bg);
   border-style: solid;
   cursor: grab;
+  box-shadow: 0 14px 26px rgba(22, 43, 88, 0.14);
 }
 
 .closetPreview {
@@ -331,15 +419,15 @@ button:active {
 }
 .closetPreview img,
 .closetPreview svg {
-  width: 85%;
-  height: 85%;
+  width: 88%;
+  height: 88%;
   display: block;
 }
 
 .closetLabel {
   font-size: 14px;
-  font-weight: 700;
-  color: rgba(36, 50, 74, 0.85);
+  font-weight: 800;
+  color: rgba(36, 50, 74, 0.9);
   text-align: center;
 }
 
@@ -349,8 +437,8 @@ button:active {
   transform: translate(-50%, -50%) scale(0.98);
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.85;
-  filter: drop-shadow(0 14px 14px rgba(20, 30, 60, 0.18));
+  opacity: 0.9;
+  filter: drop-shadow(0 14px 18px rgba(20, 30, 60, 0.2));
 }
 .dragGhostInner {
   width: 100%;
@@ -370,6 +458,16 @@ button:active {
   display: none;
 }
 
+/* Trash can */
+.trashCan {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.trashCan:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 22px rgba(0, 0, 0, 0.14);
+}
+
+/* Responsive */
 @media (max-width: 980px) {
   .studioBody {
     flex-direction: column;

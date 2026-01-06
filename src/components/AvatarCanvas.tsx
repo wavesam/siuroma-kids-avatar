@@ -1,27 +1,29 @@
-// ==========================================
-// FILE 2: AvatarCanvas.tsx
-// ==========================================
 import React from "react";
 import type { PlacedItem, Gender, TabKey } from "../types";
-import boyAvatar from "../assets/boy body.png";
+import boyAvatar from "../assets/boys only/boy body.png";
+import girlAvatar from "../assets/girls only/girl body.png";
 
-const girlAvatar = "https://example.com/images/default_avatar.png";
+type PlacedWithNorm = PlacedItem & {
+  xNorm?: number;
+  yNorm?: number;
+  sizeNorm?: number;
+};
 
 function AvatarImage({
   gender,
-  width,
-  height,
+  size,
+  offsetY,
 }: {
   gender: Gender;
-  width: number;
-  height: number;
+  size: number;
+  offsetY: number;
 }) {
   const src =
     gender === "male"
       ? boyAvatar
       : typeof girlAvatar === "string"
       ? girlAvatar
-      : "https://placehold.co/380x520/png?text=Girl+Avatar";
+      : girlAvatar;
 
   return (
     <img
@@ -29,9 +31,9 @@ function AvatarImage({
       alt={`${gender} avatar`}
       className="avatarSvg"
       style={{
-        width: `${width}px`,
-        height: `${height}px`,
-        scale: 0.7,
+        width: `${size}px`,
+        height: "auto",
+        transform: `translateY(${offsetY}px)`,
         objectFit: "contain",
         display: "block",
         pointerEvents: "none",
@@ -40,11 +42,12 @@ function AvatarImage({
   );
 }
 
+// All geometry is kept in normalized coordinates (0–1) relative to the stage.
 export function AvatarCanvas({
   gender,
   tab,
-  width = 200,
-  height = 300,
+  size = 200,
+  offsetY = 0,
   placed,
   freelyDraggable = false,
   setPlaced,
@@ -57,8 +60,8 @@ export function AvatarCanvas({
 }: {
   gender: Gender;
   tab: TabKey;
-  width?: number;
-  height?: number;
+  size?: number;
+  offsetY?: number;
   placed: PlacedItem[];
   freelyDraggable?: boolean;
   setPlaced?: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
@@ -74,50 +77,73 @@ export function AvatarCanvas({
   ) => void;
   snapItems?: boolean;
 }) {
+  const [stageSize, setStageSize] = React.useState<{
+    width: number;
+    height: number;
+  }>({
+    width: size,
+    height: size,
+  });
+
+  const avatarStageRef = React.useRef<HTMLDivElement | null>(null);
+  const avatarCanvasRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Keep live stage dimensions; used to render px values from normalized data.
+  React.useLayoutEffect(() => {
+    const el = avatarStageRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setStageSize({ width: rect.width, height: rect.height });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const getStageRect = () =>
+    avatarStageRef.current?.getBoundingClientRect() ?? null;
+
   const [dragPlacing, setDragPlacing] = React.useState<{
     id: string;
-    offsetX: number;
-    offsetY: number;
+    offsetXRatio: number;
+    offsetYRatio: number;
   } | null>(null);
 
   const dragPlacingRef = React.useRef<{
     id: string;
-    offsetX: number;
-    offsetY: number;
+    offsetXRatio: number;
+    offsetYRatio: number;
   } | null>(null);
-
-  const avatarStageRef = React.useRef<HTMLDivElement | null>(null);
 
   const onMouseDown = (
     id: string,
     e: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => {
-    if (!freelyDraggable) return;
-    if (!setDraggingPlacedId) return;
+    if (!freelyDraggable || !setDraggingPlacedId) return;
+    const rect = getStageRect();
+    if (!rect) return;
 
-    setDraggingPlacedId(id);
+    const item = placed.find((it) => it.instanceId === id) as
+      | PlacedWithNorm
+      | undefined;
+    if (!item) return;
 
-    const stageRect = avatarStageRef.current?.getBoundingClientRect();
-    const item = placed.find((it) => it.instanceId === id);
-    if (!item || !stageRect) return;
+    const xNorm = item.xNorm ?? item.x / rect.width;
+    const yNorm = item.yNorm ?? item.y / rect.height;
+    const sizeNorm = item.sizeNorm ?? (item.size ? item.size / rect.width : 0);
 
-    console.log("🖱️ [Mouse Drag Start] 拖动已放置的物品:", {
-      instanceId: id,
-      closetId: item.id,
-      name: item.name,
-      type: item.type,
-      position: { x: item.x, y: item.y },
-    });
+    const renderX = xNorm * rect.width;
+    const renderY = yNorm * rect.height;
 
-    const dragInfo = {
-      id,
-      offsetX: e.clientX - (stageRect.left + item.x),
-      offsetY: e.clientY - (stageRect.top + item.y),
-    };
-    
-    // Update both state and ref immediately
+    const offsetXRatio = (e.clientX - (rect.left + renderX)) / rect.width;
+    const offsetYRatio = (e.clientY - (rect.top + renderY)) / rect.height;
+
+    const dragInfo = { id, offsetXRatio, offsetYRatio };
     dragPlacingRef.current = dragInfo;
     setDragPlacing(dragInfo);
+    setDraggingPlacedId(id);
 
     document.body.style.cursor = "grabbing";
     e.stopPropagation();
@@ -129,36 +155,56 @@ export function AvatarCanvas({
 
     function onMouseMove(e: MouseEvent) {
       if (!setPlaced || !avatarStageRef.current || !dragPlacing) return;
-      const stageRect = avatarStageRef.current.getBoundingClientRect();
-      const newX = e.clientX - stageRect.left - dragPlacing.offsetX;
-      const newY = e.clientY - stageRect.top - dragPlacing.offsetY;
+      const rect = getStageRect();
+      if (!rect) return;
+
+      const pointerXRatio = (e.clientX - rect.left) / rect.width;
+      const pointerYRatio = (e.clientY - rect.top) / rect.height;
+
+      const newXNorm = pointerXRatio - dragPlacing.offsetXRatio;
+      const newYNorm = pointerYRatio - dragPlacing.offsetYRatio;
 
       setPlaced((current) =>
-        current.map((item) =>
-          item.instanceId === dragPlacing.id
-            ? { ...item, x: newX, y: newY }
-            : item
-        )
+        current.map((raw) => {
+          if (raw.instanceId !== dragPlacing.id) return raw;
+          const item = raw as PlacedWithNorm;
+          const xNorm = newXNorm;
+          const yNorm = newYNorm;
+          const sizeNorm =
+            item.sizeNorm ?? (item.size ? item.size / rect.width : 0);
+
+          return {
+            ...item,
+            xNorm,
+            yNorm,
+            sizeNorm,
+            x: xNorm * rect.width,
+            y: yNorm * rect.height,
+            size: sizeNorm * rect.width,
+          };
+        })
       );
 
-      // Highlight trash while dragging
       if (setIsHoveringTrash) {
         const trash = document.querySelector(".trashCan") as HTMLElement | null;
         if (trash) {
-          const rect = trash.getBoundingClientRect();
+          const tRect = trash.getBoundingClientRect();
           setIsHoveringTrash(
-            e.clientX >= rect.left &&
-              e.clientX <= rect.right &&
-              e.clientY >= rect.top &&
-              e.clientY <= rect.bottom
+            e.clientX >= tRect.left &&
+              e.clientX <= tRect.right &&
+              e.clientY >= tRect.top &&
+              e.clientY <= tRect.bottom
           );
         }
       }
     }
 
     function onMouseUp() {
-      // If mouse-drag ended while hovering trash, delete the item.
-      if (isHoveringTrash && removePlacedByInstanceId && dragPlacingRef.current) {
+      if (
+        isHoveringTrash &&
+        removePlacedByInstanceId &&
+        dragPlacingRef.current
+      ) {
         removePlacedByInstanceId(dragPlacingRef.current.id);
       }
 
@@ -184,111 +230,58 @@ export function AvatarCanvas({
     removePlacedByInstanceId,
   ]);
 
-  // Add a ref to track if we're processing a drop to prevent duplicate calls
   const isProcessingDropRef = React.useRef(false);
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  // Drop handler converts to normalized coords so zoom/resizes don't drift.
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
-    
-    // Prevent duplicate drop handling
-    if (isProcessingDropRef.current) {
-      console.log("❌ [handleDrop] 阻止：正在处理另一个 drop 事件");
-      return;
-    }
 
-    // FIXED: Removed e.stopPropagation() so the event bubbles to the document listener
-    // This allows the global "drop" listener in AvatarStudio to fire and clear the ghost/preview.
-
-    console.log("📦 [handleDrop] Drop 事件触发", {
-      dragPlacingRef: dragPlacingRef.current,
-      dataTransferTypes: Array.from(e.dataTransfer.types),
-      freelyDraggable,
-      timestamp: performance.now(),
-    });
-
-    // Prevent drop if we're currently dragging a placed item (mouse drag, not HTML5 drag)
-    // Use ref for immediate check since state updates are async
-    if (dragPlacingRef.current) {
-      console.log("❌ [handleDrop] 阻止：正在鼠标拖拽已放置物品", dragPlacingRef.current);
-      return;
-    }
-
+    if (isProcessingDropRef.current) return;
+    if (dragPlacingRef.current) return;
     if (!placeClosetItem) return;
 
-    // Only accept drops from the closet (HTML5 drag), not from placed items
-    // Check if the dropped item is already placed on the canvas
     const id =
       e.dataTransfer.getData("application/x-avatar-item-id") ||
       e.dataTransfer.getData("text/plain");
-    
-    console.log("📦 [handleDrop] 获取到的 ID:", id);
 
-    if (!id) {
-      console.log("❌ [handleDrop] 没有 ID，返回");
-      return;
-    }
+    if (!id) return;
 
-    // CRITICAL: If this is a freelyDraggable tab, check if the item is already placed
-    // This prevents creating duplicates when dragging placed items triggers HTML5 drag
-    // We check by closetId (item.id) to catch all instances of the same item
     if (freelyDraggable) {
       const isAlreadyPlaced = placed.some((item) => item.id === id);
-      if (isAlreadyPlaced) {
-        console.log("❌ [handleDrop] 阻止：物品已在画布上", {
-          id,
-          placedItems: placed.filter((item) => item.id === id).map((item) => ({
-            instanceId: item.instanceId,
-            name: item.name,
-          })),
-        });
-        // This drop is likely from dragging an already placed item, ignore it
-        return;
-      }
+      if (isAlreadyPlaced) return;
     }
 
-    // Additional safety check: if dataTransfer doesn't have the expected format,
-    // it might be from an unexpected source (like dragging a placed item)
-    // Only accept drops that have the proper MIME type from the closet
-    const hasClosetMimeType = e.dataTransfer.types.includes("application/x-avatar-item-id");
+    const hasClosetMimeType = e.dataTransfer.types.includes(
+      "application/x-avatar-item-id"
+    );
     if (!hasClosetMimeType && e.dataTransfer.getData("text/plain")) {
-      // If it only has text/plain but not the custom MIME type, it might be from a placed item
-      // Check if this item is already on the canvas
       const textId = e.dataTransfer.getData("text/plain");
-      if (placed.some((item) => item.id === textId)) {
-        console.log("❌ [handleDrop] 阻止：只有 text/plain 且物品已在画布上", textId);
-        return;
-      }
+      if (placed.some((item) => item.id === textId)) return;
     }
 
-    const rect = avatarStageRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const stageRect = getStageRect();
+    const canvasRect = avatarCanvasRef.current?.getBoundingClientRect();
+    if (!stageRect || !canvasRect) return;
 
-    // Mark as processing to prevent duplicate calls
+    const isOverCanvas =
+      e.clientX >= canvasRect.left &&
+      e.clientX <= canvasRect.right &&
+      e.clientY >= canvasRect.top &&
+      e.clientY <= canvasRect.bottom;
+
+    if (!isOverCanvas) return;
+
+    const x = e.clientX - stageRect.left;
+    const y = e.clientY - stageRect.top;
+
     isProcessingDropRef.current = true;
-    
-    // If snapItems is true, don't pass coordinates - let placeClosetItem use SNAP_POSITIONS
-    // If snapItems is false, pass the drop coordinates for free placement
+
     if (snapItems) {
-      console.log("✅ [handleDrop] 允许放置（snap模式），调用 placeClosetItem（不传坐标）", {
-        id,
-        tab,
-        snapItems,
-      });
       placeClosetItem(id, tab);
     } else {
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      console.log("✅ [handleDrop] 允许放置（自由模式），调用 placeClosetItem", {
-        id,
-        position: { x, y },
-        tab,
-        snapItems,
-      });
       placeClosetItem(id, tab, x, y);
     }
 
-    // Use setTimeout to reset the flag after a short delay
-    // This prevents rapid duplicate calls while still allowing legitimate drops
     setTimeout(() => {
       isProcessingDropRef.current = false;
     }, 100);
@@ -297,6 +290,7 @@ export function AvatarCanvas({
   return (
     <div
       className="avatarCanvas"
+      ref={avatarCanvasRef}
       style={{
         width: "100%",
         height: "100%",
@@ -305,6 +299,16 @@ export function AvatarCanvas({
         touchAction: "none",
         zIndex: 100,
       }}
+      onDragOver={(e) => {
+        if (dragPlacingRef.current) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "none";
+          return;
+        }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      }}
+      onDrop={handleDrop}
     >
       <div
         className="avatarStage"
@@ -312,16 +316,14 @@ export function AvatarCanvas({
           position: "absolute",
           left: "50%",
           top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: `${width}px`,
-          height: `${height}px`,
+          transform: `translate(-50%, -50%) translateY(${offsetY}px)`,
+          width: `${size}px`,
+          height: "auto",
           pointerEvents: "auto",
           zIndex: 200,
         }}
         ref={avatarStageRef}
         onDragOver={(e) => {
-          // Prevent drag over if we're currently dragging a placed item (mouse drag)
-          // Use ref for immediate check since state updates are async
           if (dragPlacingRef.current) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "none";
@@ -332,64 +334,71 @@ export function AvatarCanvas({
         }}
         onDrop={handleDrop}
       >
-        <AvatarImage gender={gender} width={width} height={height} />
+        <AvatarImage gender={gender} size={size} offsetY={0} />
 
-        {placed.map((item) => (
-          <div
-            key={item.instanceId}
-            className="placedItem"
-            draggable={false}
-            style={{
-              left: `${item.x}px`,
-              top: `${item.y}px`,
-              width: `${item.w}px`,
-              height: `${item.h}px`,
-              zIndex: item.z ?? 1,
-              position: "absolute",
-              cursor: freelyDraggable ? "grab" : undefined,
-              pointerEvents: freelyDraggable ? "auto" : "none",
-            }}
-            onMouseDown={
-              freelyDraggable
-                ? (e) => {
-                    onMouseDown(item.instanceId, e);
-                  }
-                : undefined
-            }
-            onDragStart={(e) => {
-              // CRITICAL: Prevent HTML5 drag when using mouse drag for placed items
-              // If we're in freelyDraggable mode, we use mouse events, not HTML5 drag
-              // Also check ref to see if we're already dragging
-              if (freelyDraggable || dragPlacingRef.current) {
-                const currentItem = placed.find((it) => it.instanceId === item.instanceId);
-                console.log("🚫 [onDragStart] 阻止 HTML5 拖拽已放置物品", {
-                  freelyDraggable,
-                  dragPlacingRef: dragPlacingRef.current,
-                  item: currentItem ? { id: currentItem.id, name: currentItem.name } : null,
-                });
-                e.preventDefault();
-                e.stopPropagation();
-                // Clear any data that might have been set
-                e.dataTransfer.clearData();
-                e.dataTransfer.effectAllowed = "none";
-                return false;
-              }
-            }}
-          >
-            <img
-              src={item.src}
-              alt={item.name}
+        {placed.map((raw) => {
+          const item = raw as PlacedWithNorm;
+          const stageW = stageSize.width || size;
+          const stageH = stageSize.height || size;
+
+          const sizeNorm =
+            item.sizeNorm ?? (item.size ? item.size / stageW : 0);
+          const xNorm = item.xNorm ?? (item.x ?? 0) / stageW;
+          const yNorm = item.yNorm ?? (item.y ?? 0) / stageH;
+
+          const renderW = sizeNorm * stageW;
+          const renderH = renderW; // square items
+
+          const left = xNorm * stageW;
+          const top = yNorm * stageH;
+
+          return (
+            <div
+              key={item.instanceId}
+              className="placedItem"
               draggable={false}
               style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                pointerEvents: "none",
-                userSelect: "none",
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${renderW}px`,
+                height: `${renderH}px`,
+                zIndex: item.z ?? 1,
+                position: "absolute",
+                cursor: freelyDraggable ? "grab" : undefined,
+                pointerEvents: freelyDraggable ? "auto" : "none",
               }}
-            />
-          </div>
-        ))}
+              onMouseDown={
+                freelyDraggable
+                  ? (e) => {
+                      onMouseDown(item.instanceId, e);
+                    }
+                  : undefined
+              }
+              onDragStart={(e) => {
+                if (freelyDraggable || dragPlacingRef.current) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.clearData();
+                  e.dataTransfer.effectAllowed = "none";
+                  return false;
+                }
+              }}
+            >
+              <img
+                src={item.src}
+                alt={item.name}
+                draggable={false}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

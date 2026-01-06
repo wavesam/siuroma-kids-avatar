@@ -40,8 +40,6 @@ export function BodyTab(props: BodyTabProps) {
     setDraggingClosetId,
     setDragPos,
     closet,
-    canvasWidth,
-    canvasHeight,
     placeClosetItem,
     snapItems,
     setDraggingPlacedId,
@@ -105,8 +103,8 @@ export function BodyTab(props: BodyTabProps) {
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          width={canvasWidth}
-          height={canvasHeight}
+          size={300}
+          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}

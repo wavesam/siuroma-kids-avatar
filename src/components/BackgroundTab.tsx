@@ -62,8 +62,8 @@ export function BackgroundTab(props: BackgroundTabProps) {
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          width={canvasWidth}
-          height={canvasHeight}
+          size={300}
+          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}
@@ -94,4 +94,3 @@ export function BackgroundTab(props: BackgroundTabProps) {
     </div>
   );
 }
-
