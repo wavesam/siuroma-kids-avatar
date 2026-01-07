@@ -32,6 +32,9 @@ interface AccessoriesTabProps {
 
   // needed so mouse-drag-to-trash deletes placed items
   removePlacedByInstanceId: (iid: string) => void;
+
+  // FIX: Allow null in RefObject
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function AccessoriesTab(props: AccessoriesTabProps) {
@@ -49,6 +52,7 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
     setIsHoveringTrash,
     isHoveringTrash,
     removePlacedByInstanceId,
+    canvasRef, // FIX: Destructure canvasRef
   } = props;
 
   const filteredCloset = closet.filter((item) => item.tab === "accessories");
@@ -61,6 +65,8 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
           position: "relative",
           zIndex: 50,
         }}
+        // FIX: Attach canvasRef here to capture the avatar area
+        ref={canvasRef}
       >
         {/* IMPORTANT: no onDrop here -> AvatarCanvas is the only drop target to prevent duplicates */}
         <AvatarCanvas

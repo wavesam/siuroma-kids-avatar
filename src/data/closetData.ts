@@ -3,12 +3,12 @@ import type {
   TabKey,
   ClosetItem,
   ClosetItemDefinition,
-} from "./types";
-import { bodyClosetData } from "./data/bodyClosetData";
-import { outfitClosetData } from "./data/outfitClosetData";
-import { accessoriesClosetData } from "./data/accessoriesClosetData";
-import { canvasClosetData } from "./data/canvasClosetData";
-import { backgroundClosetData } from "./data/backgroundClosetData";
+} from "../types";
+import { bodyClosetData } from "./bodyClosetData";
+import { outfitClosetData } from "./outfitClosetData";
+import { accessoriesClosetData } from "./accessoriesClosetData";
+import { canvasClosetData } from "./canvasClosetData";
+import { backgroundClosetData } from "./backgroundClosetData";
 
 // Single config for snap anchor + default size per type
 export const SNAP_CONFIG: Record<
@@ -19,7 +19,7 @@ export const SNAP_CONFIG: Record<
   eyes: { x: 0.5, y: 0.3, size: 170 },
   hat: { x: 0.5, y: 0.05, size: 100 },
   glasses: { x: 0.5, y: 0.22, size: 100 },
-  shirt: { x: 0.5, y: 0.4, size: 100 },
+  shirt: { x: 0.5, y: 0.95, size: 710 },
   jacket: { x: 0.5, y: 0.38, size: 100 },
   trousers: { x: 0.5, y: 0.6, size: 100 },
   pants: { x: 0.5, y: 0.6, size: 100 },

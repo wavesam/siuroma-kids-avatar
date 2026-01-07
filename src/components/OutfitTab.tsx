@@ -5,29 +5,28 @@ import { AvatarCanvas } from "./AvatarCanvas";
 
 interface OutfitTabProps {
   gender: Gender;
-  tab: TabKey; // current tab (passed from AvatarStudio)
+  tab: TabKey;
   placed: PlacedItem[];
-  setGender: (gender: Gender) => void;
   setPlaced: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
   setDraggingClosetId: (id: string | null) => void;
   setDragPos: (pos: { x: number; y: number } | null) => void;
   closet: ClosetItem[];
   canvasWidth: number;
   canvasHeight: number;
-
   placeClosetItem: (
     closetId: string,
     tab: TabKey,
     dropX?: number,
     dropY?: number
   ) => void;
-
-  // added for consistent behavior / trash delete of placed items
   snapItems: boolean;
   setDraggingPlacedId: (iid: string | null) => void;
   setIsHoveringTrash: (b: boolean) => void;
   isHoveringTrash: boolean;
   removePlacedByInstanceId: (iid: string) => void;
+
+  // FIX: Add canvasRef prop
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function OutfitTab(props: OutfitTabProps) {
@@ -45,41 +44,42 @@ export function OutfitTab(props: OutfitTabProps) {
     setIsHoveringTrash,
     isHoveringTrash,
     removePlacedByInstanceId,
+    canvasRef, // FIX: Destructure canvasRef
   } = props;
 
-  // Outfit items only
   const closetItems = closet.filter((item) => item.tab === "outfit");
 
-  // Filter based on TYPE now
-  const [typeFilter] = React.useState<string>("all");
+  // DETECT STRATEGY: Do any items here have an occupation?
+  const hasOccupation = closetItems.some((item) => !!item.occupation);
 
-  const typeOptions = [
-    "all",
-    ...(Array.from(
-      new Set(closetItems.map((item) => item.type ?? "other"))
-    ) as string[]),
-  ];
+  let filterOptions: string[] = [];
 
-  const filteredCloset =
-    typeFilter === "all"
-      ? closetItems.filter(
-          (item) =>
-            !item.gender || item.gender === gender || item.gender === "unisex"
+  if (hasOccupation) {
+    // Strategy A: Filter by Occupation
+    filterOptions = [
+      ...Array.from(
+        new Set(
+          closetItems.map((i) => i.occupation).filter(Boolean) as string[]
         )
-      : closetItems.filter(
-          (item) =>
-            (item.type ?? "other") === typeFilter &&
-            (!item.gender || item.gender === gender || item.gender === "unisex")
-        );
+      ),
+    ];
+  } else {
+    // Strategy B: Filter by Type (Fallback)
+    filterOptions = [
+      "all",
+      ...Array.from(
+        new Set(closetItems.map((i) => i.type).filter(Boolean) as string[])
+      ),
+    ];
+  }
 
   return (
     <div className="studioBody">
+      {/* FIX: Attach canvasRef here */}
       <div
         className="left"
-        style={{
-          position: "relative",
-          zIndex: 50, // keep avatar/placed above closet column
-        }}
+        style={{ position: "relative", zIndex: 50 }}
+        ref={canvasRef}
       >
         <AvatarCanvas
           gender={gender}
@@ -97,15 +97,9 @@ export function OutfitTab(props: OutfitTabProps) {
         />
       </div>
 
-      <div
-        className="right"
-        style={{
-          position: "relative",
-          zIndex: 10,
-        }}
-      >
+      <div className="right" style={{ position: "relative", zIndex: 10 }}>
         <Closet
-          items={filteredCloset}
+          items={closetItems}
           avatarGender={gender}
           tab="outfit"
           onStartDrag={(id) => {
@@ -116,8 +110,8 @@ export function OutfitTab(props: OutfitTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
-          // Passing type options to the Closet component
-          categoryOptions={typeOptions}
+          filterOptions={filterOptions}
+          filterByOccupation={hasOccupation} // Tell Closet which logic to use
         />
       </div>
     </div>

@@ -6,12 +6,14 @@ import type {
   TabKey,
   ClosetItemType,
 } from "../types";
-import { CLOSET_DATA_BY_TAB, SNAP_CONFIG } from "../closetData";
+import { CLOSET_DATA_BY_TAB, SNAP_CONFIG } from "../data/closetData";
 import { OutfitTab } from "./OutfitTab";
 import { BodyTab } from "./BodyTab";
 import { AccessoriesTab } from "./AccessoriesTab";
 import { CanvasTab } from "./CanvasTab";
 import { BackgroundTab } from "./BackgroundTab";
+// 1. Added imports for export functionality
+import { exportCanvasToImage, downloadImage } from "../utils/exportCanvas";
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
@@ -27,7 +29,7 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
 
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
   body: { snapItems: true },
-  outfit: { snapItems: false },
+  outfit: { snapItems: true },
   accessories: { snapItems: true },
   canvas: { snapItems: false },
   background: { snapItems: false },
@@ -81,6 +83,11 @@ export function AvatarStudio() {
   });
 
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+
+  // 2. Added Refs for canvas export and state for the preview image
+  const canvasRef = React.useRef<HTMLDivElement | null>(null);
+  const drawingCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
 
   React.useLayoutEffect(() => {
     const MARGIN = 48;
@@ -321,6 +328,7 @@ export function AvatarStudio() {
     setDraggingPlacedId,
     draggingPlacedId,
     removePlacedByInstanceId,
+    canvasRef, // Added canvasRef to shared props
   } as const;
 
   let TabContent: JSX.Element | null = null;
@@ -338,7 +346,14 @@ export function AvatarStudio() {
       TabContent = <AccessoriesTab {...sharedTabProps} />;
       break;
     case "canvas":
-      TabContent = <CanvasTab {...sharedTabProps} />;
+      // 3. Updated CanvasTab to receive both refs
+      TabContent = (
+        <CanvasTab
+          {...sharedTabProps}
+          avatarCanvasRef={canvasRef}
+          drawingCanvasRef={drawingCanvasRef}
+        />
+      );
       break;
     default:
       TabContent = null;
@@ -370,23 +385,97 @@ export function AvatarStudio() {
     [progressPercent]
   );
 
+  // 4. Implement Export Logic
+  const handleExportCanvas = async (): Promise<string | null> => {
+    return await exportCanvasToImage({
+      avatarCanvasElement: canvasRef.current,
+      drawingCanvasElement: drawingCanvasRef.current,
+      scale: 2,
+      backgroundColor: null,
+    });
+  };
+
   const handleShare = async () => {
+    const dataUrl = await handleExportCanvas();
+    if (!dataUrl) {
+      window.alert("Failed to generate image. Please try again.");
+      return;
+    }
+
+    // Convert data URL to Blob
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `avatar-${Date.now()}.png`, {
+      type: "image/png",
+    });
+
+    // Try Web Share API with files
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({
+          title: "My Avatar",
+          text: "Check out my avatar creation!",
+          files: [file],
+        });
+        return;
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.warn("Share failed:", err);
+        } else {
+          return;
+        }
+      }
+    }
+
+    // Try Web Share API (text only fallback)
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "My avatar",
-          text: "Check out my avatar!",
+          title: "My Avatar",
+          text: "Check out my avatar creation!",
         });
-      } catch (err) {
-        console.warn("Share cancelled or failed", err);
+        return;
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.warn("Share failed:", err);
+        } else {
+          return;
+        }
       }
-    } else {
-      window.alert("Sharing is not supported in this browser.");
+    }
+
+    // Fallback: Clipboard
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "image/png": blob,
+        }),
+      ]);
+      window.alert("Image copied to clipboard! You can paste it elsewhere.");
+    } catch (clipboardErr) {
+      console.error("Clipboard copy failed:", clipboardErr);
+      window.alert(
+        "Could not share automatically. Please download the image and share manually."
+      );
     }
   };
 
-  const handleDownload = () => {
-    window.alert("Download coming soon. Hook into your canvas export here.");
+  const handleDownload = async () => {
+    const dataUrl = await handleExportCanvas();
+    if (!dataUrl) {
+      window.alert("Export failed, please try again.");
+      return;
+    }
+    downloadImage(dataUrl);
+  };
+
+  const handlePreviewOpen = async () => {
+    setIsPreviewOpen(true);
+    const dataUrl = await handleExportCanvas();
+    setPreviewImage(dataUrl);
   };
 
   return (
@@ -413,7 +502,7 @@ export function AvatarStudio() {
           <button
             type="button"
             className="studioFinishButton"
-            onClick={() => setIsPreviewOpen(true)}
+            onClick={handlePreviewOpen} // Updated to call preview handler
           >
             Finish
           </button>
@@ -434,9 +523,13 @@ export function AvatarStudio() {
 
         {isPreviewOpen && (
           <SavePreviewModal
-            onClose={() => setIsPreviewOpen(false)}
+            onClose={() => {
+              setIsPreviewOpen(false);
+              setPreviewImage(null);
+            }}
             onDownload={handleDownload}
             onShare={handleShare}
+            previewImage={previewImage}
           />
         )}
       </div>
@@ -448,10 +541,12 @@ function SavePreviewModal({
   onClose,
   onDownload,
   onShare,
+  previewImage,
 }: {
   onClose: () => void;
   onDownload: () => void;
   onShare: () => void;
+  previewImage: string | null;
 }) {
   return (
     <div className="savePreviewOverlay" role="dialog" aria-modal="true">
@@ -469,20 +564,36 @@ function SavePreviewModal({
         </div>
         <div className="savePreviewBody">
           <div className="previewFrame">
-            <p className="previewHint">
-              Your final avatar preview can render here. Hook up your canvas
-              export or snapshot.
-            </p>
+            {previewImage ? (
+              <img
+                src={previewImage}
+                alt="Avatar Preview"
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  maxWidth: "100%",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <p className="previewHint">Generating preview...</p>
+            )}
           </div>
           <div className="saveActions">
             <button
               type="button"
               className="primaryAction"
               onClick={onDownload}
+              disabled={!previewImage}
             >
               Download
             </button>
-            <button type="button" className="secondaryAction" onClick={onShare}>
+            <button
+              type="button"
+              className="secondaryAction"
+              onClick={onShare}
+              disabled={!previewImage}
+            >
               Share
             </button>
           </div>
@@ -506,8 +617,7 @@ function DragGhost({
       style={{
         left: pos.x,
         top: pos.y,
-        width: item.size,
-        height: "auto",
+        width: 200,
         position: "fixed",
         pointerEvents: "none",
         zIndex: 99999,

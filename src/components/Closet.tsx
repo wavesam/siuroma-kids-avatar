@@ -5,13 +5,24 @@ const emptyImg = new Image();
 emptyImg.src =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
-// Updated to map from Item Types to icons
-const TYPE_IMAGES: Record<string, string> = {
+// Mappings for BOTH types and occupations
+const ICON_MAPPINGS: Record<string, string> = {
   all: "https://api.iconify.design/ic:round-category.svg?color=%23cfe1ef",
-  // Body types
+
+  // Occupations
+  singer: "https://api.iconify.design/fluent-emoji-flat:microphone.svg",
+  youtuber: "https://api.iconify.design/fluent-emoji-flat:video-camera.svg",
+  fashion: "https://api.iconify.design/fluent-emoji-flat:thread.svg",
+  teacher: "https://api.iconify.design/fluent-emoji-flat:books.svg",
+  pilot: "https://api.iconify.design/fluent-emoji-flat:airplane.svg",
+  doctor: "https://api.iconify.design/healthicons:doctor.svg",
+  chef: "https://api.iconify.design/fluent-emoji-flat:chef.svg",
+  police: "https://api.iconify.design/fluent-emoji-flat:police-officer.svg",
+  artist: "https://api.iconify.design/fluent-emoji-flat:artist.svg",
+
+  // Types
   hair: "https://api.iconify.design/fluent-emoji-flat:person-red-hair.svg",
   eyes: "https://api.iconify.design/fluent-emoji-flat:eye.svg",
-  // Outfit types
   shirt: "https://api.iconify.design/fluent-emoji-flat:t-shirt.svg",
   pants: "https://api.iconify.design/fluent-emoji-flat:jeans.svg",
   shoes: "https://api.iconify.design/fluent-emoji-flat:running-shoe.svg",
@@ -19,16 +30,21 @@ const TYPE_IMAGES: Record<string, string> = {
   glasses: "https://api.iconify.design/fluent-emoji-flat:glasses.svg",
   jacket: "https://api.iconify.design/fluent-emoji-flat:coat.svg",
   accessory: "https://api.iconify.design/fluent-emoji-flat:gem-stone.svg",
-  // Fallbacks
+
+  // Fallback
   other: "https://api.iconify.design/fluent-emoji-flat:package.svg",
 };
 
 export function Closet({
   items,
   avatarGender,
+  tab,
   onStartDrag,
   onEndDrag,
-  categoryOptions,
+  // Now generically named "filterOptions" instead of category/type
+  filterOptions,
+  // We pass a flag to know if we are filtering by occupation or type
+  filterByOccupation = false,
   children,
 }: {
   items: ClosetItem[];
@@ -36,36 +52,37 @@ export function Closet({
   tab: TabKey;
   onStartDrag: (id: string) => void;
   onEndDrag: () => void;
-  categoryOptions?: string[];
+  filterOptions?: string[];
+  filterByOccupation?: boolean;
   children?: ReactNode;
 }) {
-  const hasCategories = !!(categoryOptions && categoryOptions.length > 0);
-  const [selectedType, setSelectedType] = useState<string | null>(
-    hasCategories ? null : "all"
+  const hasFilters = !!(filterOptions && filterOptions.length > 0);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(
+    hasFilters ? null : "all"
   );
 
   const pretty = (s: string) =>
     s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1);
 
-  // If we have categories (types) to show and haven't picked one yet
-  if (hasCategories && !selectedType) {
+  // 1. Render the Grid of Icons (Categories)
+  if (hasFilters && !selectedFilter) {
     return (
       <div className="closet card">
         {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
         <div className="closetGrid">
-          {categoryOptions!.map((typeKey) => (
+          {filterOptions!.map((key) => (
             <div
               className="closetItem"
-              key={typeKey}
+              key={key}
               style={{ cursor: "pointer", borderStyle: "solid" }}
-              onClick={() => setSelectedType(typeKey)}
+              onClick={() => setSelectedFilter(key)}
               tabIndex={0}
               role="button"
             >
               <div className="closetPreview">
                 <img
-                  src={TYPE_IMAGES[typeKey] ?? TYPE_IMAGES.other}
-                  alt={typeKey}
+                  src={ICON_MAPPINGS[key] ?? ICON_MAPPINGS.other}
+                  alt={key}
                   style={{
                     width: "80%",
                     height: "80%",
@@ -76,7 +93,7 @@ export function Closet({
                 />
               </div>
               <div className="closetLabel" style={{ fontSize: 16 }}>
-                {pretty(typeKey)}
+                {pretty(key)}
               </div>
             </div>
           ))}
@@ -85,22 +102,31 @@ export function Closet({
     );
   }
 
+  // 2. Render the Items (Filtered)
   const filteredItems = items.filter((it) => {
     const genderOk =
       !it.gender || it.gender === "unisex" || it.gender === avatarGender;
 
-    // Filter by TYPE now, not category
-    const typeOk =
-      !hasCategories || selectedType === "all" || it.type === selectedType;
+    let filterOk = true;
 
-    return genderOk && typeOk;
+    if (hasFilters && selectedFilter !== "all") {
+      if (filterByOccupation) {
+        // Strict match for occupation
+        filterOk = it.occupation === selectedFilter;
+      } else {
+        // Strict match for type
+        filterOk = it.type === selectedFilter;
+      }
+    }
+
+    return genderOk && filterOk;
   });
 
   return (
     <div className="closet card">
       {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
-      {hasCategories && (
-        <button onClick={() => setSelectedType(null)}>← Back</button>
+      {hasFilters && (
+        <button onClick={() => setSelectedFilter(null)}>← Back</button>
       )}
       <div className="closetGrid">
         {filteredItems.map((it) => (

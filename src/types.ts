@@ -45,15 +45,12 @@ export type ClosetItemType =
 export interface ClosetItem {
   id: string;
   name: string;
-  /** The functional slot this item belongs to (determines snap behavior). */
   type?: ClosetItemType;
-  /** The source URL or import for the image asset. */
+  /** Optional grouping for careers/roles (overrides type in filter UI if present) */
+  occupation?: string;
   src: string;
-  /** Optional gender restriction for filtering. */
   gender?: Gender | "unisex";
-  /** The UI tab this item appears in. */
   tab: TabKey;
-  /** Optional hex code or color value (mostly for background items). */
   color?: string;
 }
 

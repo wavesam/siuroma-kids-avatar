@@ -375,7 +375,6 @@ button:focus-visible {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--avatar-bg);
   border-radius: var(--radius);
   /* Chunky border */
   border: 4px solid #ffffff;
@@ -390,7 +389,6 @@ button:focus-visible {
   width: auto;
   height: auto;
   pointer-events: none;
-  background: var(--avatar-bg);
 }
 
 .placedItem {

@@ -25,6 +25,10 @@ interface CanvasTabProps {
   setIsHoveringTrash: (b: boolean) => void;
   isHoveringTrash: boolean;
   removePlacedByInstanceId: (iid: string) => void;
+
+  // Refs passed from AvatarStudio for export functionality
+  avatarCanvasRef: React.RefObject<HTMLDivElement | null>;
+  drawingCanvasRef: React.RefObject<HTMLCanvasElement | null>;
 }
 
 type DrawingTool = "brush" | "eraser";
@@ -37,8 +41,8 @@ export function CanvasTab(props: CanvasTabProps) {
     setPlaced,
     setDraggingClosetId,
     setDragPos,
-    canvasWidth,
-    canvasHeight,
+    canvasWidth, // used in effect dependency
+    canvasHeight, // used in effect dependency
     placeClosetItem,
     snapItems,
     setDraggingPlacedId,
@@ -46,6 +50,8 @@ export function CanvasTab(props: CanvasTabProps) {
     isHoveringTrash,
     removePlacedByInstanceId,
     closet,
+    avatarCanvasRef,
+    drawingCanvasRef,
   } = props;
 
   const [tool, setTool] = React.useState<DrawingTool>("brush");
@@ -54,8 +60,10 @@ export function CanvasTab(props: CanvasTabProps) {
   const [multiPointEnabled, setMultiPointEnabled] = React.useState(false);
   const [multiPointCount, setMultiPointCount] = React.useState(5);
   const [multiPointSpread, setMultiPointSpread] = React.useState(10);
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  // Local ref for container logic (drag & drop calculations)
   const canvasContainerRef = React.useRef<HTMLDivElement | null>(null);
+
   const [isDrawing, setIsDrawing] = React.useState(false);
   const historyRef = React.useRef<ImageData[]>([]);
   const historyIndexRef = React.useRef(-1);
@@ -68,7 +76,7 @@ export function CanvasTab(props: CanvasTabProps) {
   }, []);
 
   const saveState = React.useCallback(() => {
-    const canvas = canvasRef.current;
+    const canvas = drawingCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -104,10 +112,10 @@ export function CanvasTab(props: CanvasTabProps) {
     } catch (error) {
       console.error("Error saving state:", error);
     }
-  }, [updateHistoryButtons]);
+  }, [updateHistoryButtons, drawingCanvasRef]);
 
   React.useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = drawingCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -118,6 +126,7 @@ export function CanvasTab(props: CanvasTabProps) {
     const newWidth = rect.width * dpr;
     const newHeight = rect.height * dpr;
 
+    // Only resize if dimensions actually changed
     if (canvas.width !== newWidth || canvas.height !== newHeight) {
       const hasExistingContent = canvas.width > 0 && canvas.height > 0;
       let imageData: ImageData | null = null;
@@ -135,21 +144,11 @@ export function CanvasTab(props: CanvasTabProps) {
       ctx.scale(dpr, dpr);
 
       if (imageData) {
-        if (
-          imageData.width !== rect.width * dpr ||
-          imageData.height !== rect.height * dpr
-        ) {
-          const tempCanvas = document.createElement("canvas");
-          tempCanvas.width = imageData.width;
-          tempCanvas.height = imageData.height;
-          const tempCtx = tempCanvas.getContext("2d");
-          if (tempCtx) {
-            tempCtx.putImageData(imageData, 0, 0);
-            ctx.drawImage(tempCanvas, 0, 0, rect.width, rect.height);
-          }
-        } else {
-          ctx.putImageData(imageData, 0, 0);
-        }
+        // If we have data, put it back.
+        // Note: scaling the image data to fit new size is complex;
+        // simple putImageData restores pixels 1:1.
+        // For a simple resize fix, this is usually acceptable.
+        ctx.putImageData(imageData, 0, 0);
         saveState();
       } else {
         ctx.clearRect(0, 0, rect.width, rect.height);
@@ -158,11 +157,11 @@ export function CanvasTab(props: CanvasTabProps) {
         }
       }
     }
-  }, [canvasWidth, canvasHeight, saveState]);
+  }, [canvasWidth, canvasHeight, saveState, drawingCanvasRef]);
 
   const restoreState = React.useCallback(
     (index: number) => {
-      const canvas = canvasRef.current;
+      const canvas = drawingCanvasRef.current;
       if (!canvas) return;
 
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -171,15 +170,13 @@ export function CanvasTab(props: CanvasTabProps) {
       if (index >= 0 && index < historyRef.current.length) {
         const imageData = historyRef.current[index];
         if (imageData) {
+          // Ensure canvas matches image data size to avoid cropping
           if (
             canvas.width !== imageData.width ||
             canvas.height !== imageData.height
           ) {
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
           }
           ctx.putImageData(imageData, 0, 0);
           historyIndexRef.current = index;
@@ -187,7 +184,7 @@ export function CanvasTab(props: CanvasTabProps) {
         }
       }
     },
-    [updateHistoryButtons]
+    [updateHistoryButtons, drawingCanvasRef]
   );
 
   const undo = React.useCallback(() => {
@@ -210,7 +207,7 @@ export function CanvasTab(props: CanvasTabProps) {
   const getPointFromEvent = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
-    const canvas = canvasRef.current;
+    const canvas = drawingCanvasRef.current;
     if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
@@ -251,7 +248,7 @@ export function CanvasTab(props: CanvasTabProps) {
       point: { x: number; y: number },
       prevPoint: { x: number; y: number } | null
     ) => {
-      const canvas = canvasRef.current;
+      const canvas = drawingCanvasRef.current;
       if (!canvas) return;
 
       const ctx = canvas.getContext("2d");
@@ -274,16 +271,11 @@ export function CanvasTab(props: CanvasTabProps) {
 
       if (multiPointEnabled && tool === "brush") {
         if (prevPoint) {
-          const steps = Math.max(
-            3,
-            Math.floor(
-              Math.sqrt(
-                Math.pow(point.x - prevPoint.x, 2) +
-                  Math.pow(point.y - prevPoint.y, 2)
-              ) /
-                (brushSize / 2)
-            )
+          const distance = Math.sqrt(
+            Math.pow(point.x - prevPoint.x, 2) +
+              Math.pow(point.y - prevPoint.y, 2)
           );
+          const steps = Math.max(3, Math.floor(distance / (brushSize / 2)));
 
           for (let i = 0; i <= steps; i++) {
             const t = i / steps;
@@ -308,7 +300,14 @@ export function CanvasTab(props: CanvasTabProps) {
         }
       }
     },
-    [tool, brushSize, brushColor, multiPointEnabled, drawMultiPoint]
+    [
+      tool,
+      brushSize,
+      brushColor,
+      multiPointEnabled,
+      drawMultiPoint,
+      drawingCanvasRef,
+    ]
   );
 
   const prevPointRef = React.useRef<{ x: number; y: number } | null>(null);
@@ -447,19 +446,18 @@ export function CanvasTab(props: CanvasTabProps) {
   }, [setDragPos]);
 
   const colorPresets = [
-    "#FF6B6B", // Red
-    "#FF9F43", // Orange
-    "#Feca57", // Yellow
-    "#48dbfb", // Blue
-    "#ff9ff3", // Pink
-    "#54a0ff", // Dark Blue
-    "#5f27cd", // Purple
-    "#000000", // Black
+    "#FF6B6B",
+    "#FF9F43",
+    "#Feca57",
+    "#48dbfb",
+    "#ff9ff3",
+    "#54a0ff",
+    "#5f27cd",
+    "#000000",
   ];
 
   const toolsPanel = (
     <>
-      {/* Title / Hero */}
       <div className="art-tools-hero">
         <span className="hero-icon">🎨</span>
         <div className="hero-text">
@@ -468,7 +466,6 @@ export function CanvasTab(props: CanvasTabProps) {
         </div>
       </div>
 
-      {/* Main Tool Toggle */}
       <div className="tool-selector-group">
         <button
           className={`big-tool-btn ${tool === "brush" ? "active" : ""}`}
@@ -490,7 +487,6 @@ export function CanvasTab(props: CanvasTabProps) {
 
       {tool === "brush" && (
         <>
-          {/* Size Slider */}
           <div className="control-card">
             <div className="card-header">
               <span>Size</span>
@@ -506,7 +502,6 @@ export function CanvasTab(props: CanvasTabProps) {
             />
           </div>
 
-          {/* Colors */}
           <div className="control-card">
             <div className="card-header">Color Palette</div>
             <div className="palette-grid">
@@ -531,7 +526,6 @@ export function CanvasTab(props: CanvasTabProps) {
             </div>
           </div>
 
-          {/* Magic Effect */}
           <div className="control-card highlight">
             <div className="card-header toggle-header">
               <span>Magic Dust</span>
@@ -594,7 +588,6 @@ export function CanvasTab(props: CanvasTabProps) {
         </div>
       )}
 
-      {/* History */}
       <div className="history-row">
         <button
           className="history-pill"
@@ -619,9 +612,25 @@ export function CanvasTab(props: CanvasTabProps) {
   return (
     <div className="studioBody">
       <div className="left" style={{ position: "relative", zIndex: 50 }}>
+        {/*
+          We use this single div as the capture target for both the avatar AND the drawing canvas.
+          We update local 'canvasContainerRef' for drop logic,
+          AND 'avatarCanvasRef' (from parent) for export logic.
+        */}
         <div
           className="canvasContainer"
-          ref={canvasContainerRef}
+          ref={(node) => {
+            canvasContainerRef.current = node;
+            if (avatarCanvasRef) {
+              if (typeof avatarCanvasRef === "function") {
+                (avatarCanvasRef as Function)(node);
+              } else {
+                (
+                  avatarCanvasRef as React.MutableRefObject<HTMLDivElement | null>
+                ).current = node;
+              }
+            }
+          }}
           onDragOver={handleDragOverCanvas}
           onDrop={handleDropOnCanvas}
           onDragLeave={handleDragLeaveCanvas}
@@ -642,7 +651,7 @@ export function CanvasTab(props: CanvasTabProps) {
             snapItems={snapItems}
           />
           <canvas
-            ref={canvasRef}
+            ref={drawingCanvasRef}
             className="drawingCanvas"
             onMouseDown={handleStart}
             onMouseMove={handleMove}

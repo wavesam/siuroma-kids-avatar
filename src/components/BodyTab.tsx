@@ -28,6 +28,7 @@ interface BodyTabProps {
   setDraggingPlacedId: (id: string | null) => void;
   draggingPlacedId: string | null;
   removePlacedByInstanceId: (iid: string) => void;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function BodyTab(props: BodyTabProps) {
@@ -46,17 +47,16 @@ export function BodyTab(props: BodyTabProps) {
     setIsHoveringTrash,
     isHoveringTrash,
     removePlacedByInstanceId,
+    canvasRef,
   } = props;
 
   const closetItems = closet.filter((item) => item.tab === "body");
 
-  // Removed old category/occupation filtering logic entirely for now
-  // If you want type-based filtering back, you can add it here later.
-  // Currently showing all items filtered by gender.
-
-  const filteredCloset = closetItems.filter(
-    (item) => !item.gender || item.gender === gender || item.gender === "unisex"
-  );
+  const typeOptions = [
+    ...Array.from(
+      new Set(closetItems.map((item) => item.type).filter(Boolean) as string[])
+    ),
+  ];
 
   const genderSelector = (
     <div>
@@ -88,7 +88,11 @@ export function BodyTab(props: BodyTabProps) {
 
   return (
     <div className="studioBody">
-      <div className="left" style={{ position: "relative", zIndex: 50 }}>
+      <div
+        className="left"
+        style={{ position: "relative", zIndex: 50 }}
+        ref={canvasRef} // FIX: Attached ref here instead of to AvatarCanvas
+      >
         <AvatarCanvas
           gender={gender}
           tab={tab}
@@ -106,7 +110,7 @@ export function BodyTab(props: BodyTabProps) {
       </div>
       <div className="right" style={{ position: "relative", zIndex: 10 }}>
         <Closet
-          items={filteredCloset}
+          items={closetItems}
           avatarGender={gender}
           tab="body"
           onStartDrag={(id) => {
@@ -117,6 +121,8 @@ export function BodyTab(props: BodyTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
+          filterOptions={typeOptions}
+          filterByOccupation={false}
         >
           <h1>Body</h1>
           {genderSelector}

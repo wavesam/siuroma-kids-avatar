@@ -24,6 +24,7 @@ interface BackgroundTabProps {
   setIsHoveringTrash: (b: boolean) => void;
   isHoveringTrash: boolean;
   removePlacedByInstanceId: (iid: string) => void;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 type Wallpaper = {
@@ -158,6 +159,7 @@ export function BackgroundTab(props: BackgroundTabProps) {
     setIsHoveringTrash,
     isHoveringTrash,
     removePlacedByInstanceId,
+    canvasRef,
   } = props;
 
   const filteredCloset = closet.filter((item) => item.tab === "background");
@@ -173,8 +175,8 @@ export function BackgroundTab(props: BackgroundTabProps) {
         name: `Background ${wallpaper.id}`,
         tab: "background",
         instanceId,
-        src: "", // No image src for color backgrounds
-        type: "body", // Default or dummy type if needed
+        src: "",
+        type: "body",
         x: canvasWidth / 2,
         y: canvasHeight / 2,
         z: 0,
@@ -233,7 +235,11 @@ export function BackgroundTab(props: BackgroundTabProps) {
 
   return (
     <div className="studioBody">
-      <div className="left" style={{ position: "relative", zIndex: 50 }}>
+      <div
+        className="left"
+        style={{ position: "relative", zIndex: 50 }}
+        ref={canvasRef} // FIX: Attached ref here instead of to AvatarCanvas
+      >
         <AvatarCanvas
           gender={gender}
           tab={tab}
