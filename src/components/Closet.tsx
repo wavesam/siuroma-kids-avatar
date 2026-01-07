@@ -5,22 +5,30 @@ const emptyImg = new Image();
 emptyImg.src =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
-const OCC_IMAGES: Record<string, string> = {
+// Updated to map from Item Types to icons
+const TYPE_IMAGES: Record<string, string> = {
   all: "https://api.iconify.design/ic:round-category.svg?color=%23cfe1ef",
-  doctor: "https://api.iconify.design/healthicons:doctor.svg",
-  chef: "https://api.iconify.design/fluent-emoji-flat:chef.svg",
-  police: "https://api.iconify.design/fluent-emoji-flat:police-officer.svg",
-  artist: "https://api.iconify.design/fluent-emoji-flat:artist.svg",
-  fashion: "https://api.iconify.design/fluent-emoji-flat:t-shirt.svg",
+  // Body types
+  hair: "https://api.iconify.design/fluent-emoji-flat:person-red-hair.svg",
+  eyes: "https://api.iconify.design/fluent-emoji-flat:eye.svg",
+  // Outfit types
+  shirt: "https://api.iconify.design/fluent-emoji-flat:t-shirt.svg",
+  pants: "https://api.iconify.design/fluent-emoji-flat:jeans.svg",
+  shoes: "https://api.iconify.design/fluent-emoji-flat:running-shoe.svg",
+  hat: "https://api.iconify.design/fluent-emoji-flat:womans-hat.svg",
+  glasses: "https://api.iconify.design/fluent-emoji-flat:glasses.svg",
+  jacket: "https://api.iconify.design/fluent-emoji-flat:coat.svg",
+  accessory: "https://api.iconify.design/fluent-emoji-flat:gem-stone.svg",
+  // Fallbacks
+  other: "https://api.iconify.design/fluent-emoji-flat:package.svg",
 };
 
 export function Closet({
   items,
   avatarGender,
-  tab,
   onStartDrag,
   onEndDrag,
-  occupationOptions,
+  categoryOptions,
   children,
 }: {
   items: ClosetItem[];
@@ -28,35 +36,36 @@ export function Closet({
   tab: TabKey;
   onStartDrag: (id: string) => void;
   onEndDrag: () => void;
-  occupationOptions?: string[];
+  categoryOptions?: string[];
   children?: ReactNode;
 }) {
-  const hasOccupations = !!(occupationOptions && occupationOptions.length > 0);
-  const [selectedOcc, setSelectedOcc] = useState<string | null>(
-    hasOccupations ? null : "all"
+  const hasCategories = !!(categoryOptions && categoryOptions.length > 0);
+  const [selectedType, setSelectedType] = useState<string | null>(
+    hasCategories ? null : "all"
   );
 
   const pretty = (s: string) =>
     s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1);
 
-  if (hasOccupations && !selectedOcc) {
+  // If we have categories (types) to show and haven't picked one yet
+  if (hasCategories && !selectedType) {
     return (
       <div className="closet card">
         {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
         <div className="closetGrid">
-          {occupationOptions!.map((occ) => (
+          {categoryOptions!.map((typeKey) => (
             <div
               className="closetItem"
-              key={occ}
+              key={typeKey}
               style={{ cursor: "pointer", borderStyle: "solid" }}
-              onClick={() => setSelectedOcc(occ)}
+              onClick={() => setSelectedType(typeKey)}
               tabIndex={0}
               role="button"
             >
               <div className="closetPreview">
                 <img
-                  src={OCC_IMAGES[occ] ?? OCC_IMAGES.all}
-                  alt={occ}
+                  src={TYPE_IMAGES[typeKey] ?? TYPE_IMAGES.other}
+                  alt={typeKey}
                   style={{
                     width: "80%",
                     height: "80%",
@@ -67,7 +76,7 @@ export function Closet({
                 />
               </div>
               <div className="closetLabel" style={{ fontSize: 16 }}>
-                {pretty(occ)}
+                {pretty(typeKey)}
               </div>
             </div>
           ))}
@@ -80,17 +89,18 @@ export function Closet({
     const genderOk =
       !it.gender || it.gender === "unisex" || it.gender === avatarGender;
 
-    const occupationOk =
-      !hasOccupations || selectedOcc === "all" || it.occupation === selectedOcc;
+    // Filter by TYPE now, not category
+    const typeOk =
+      !hasCategories || selectedType === "all" || it.type === selectedType;
 
-    return genderOk && occupationOk;
+    return genderOk && typeOk;
   });
 
   return (
     <div className="closet card">
       {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
-      {hasOccupations && (
-        <button onClick={() => setSelectedOcc(null)}>← Back</button>
+      {hasCategories && (
+        <button onClick={() => setSelectedType(null)}>← Back</button>
       )}
       <div className="closetGrid">
         {filteredItems.map((it) => (

@@ -50,25 +50,13 @@ export function BodyTab(props: BodyTabProps) {
 
   const closetItems = closet.filter((item) => item.tab === "body");
 
-  const [occupationFilter] = React.useState<string>("all");
-  const occupationOptions = [
-    "all",
-    ...(Array.from(
-      new Set(closetItems.map((item) => item.occupation ?? "other"))
-    ) as string[]),
-  ];
+  // Removed old category/occupation filtering logic entirely for now
+  // If you want type-based filtering back, you can add it here later.
+  // Currently showing all items filtered by gender.
 
-  const filteredCloset =
-    occupationFilter === "all"
-      ? closetItems.filter(
-          (item) =>
-            !item.gender || item.gender === gender || item.gender === "unisex"
-        )
-      : closetItems.filter(
-          (item) =>
-            (item.occupation ?? "other") === occupationFilter &&
-            (!item.gender || item.gender === gender || item.gender === "unisex")
-        );
+  const filteredCloset = closetItems.filter(
+    (item) => !item.gender || item.gender === gender || item.gender === "unisex"
+  );
 
   const genderSelector = (
     <div>
@@ -104,8 +92,6 @@ export function BodyTab(props: BodyTabProps) {
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          size={300}
-          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}
@@ -115,6 +101,7 @@ export function BodyTab(props: BodyTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
+          size={300}
         />
       </div>
       <div className="right" style={{ position: "relative", zIndex: 10 }}>
@@ -130,7 +117,6 @@ export function BodyTab(props: BodyTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
-          occupationOptions={occupationOptions}
         >
           <h1>Body</h1>
           {genderSelector}

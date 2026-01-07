@@ -22,7 +22,7 @@ interface OutfitTabProps {
     dropY?: number
   ) => void;
 
-  // added for consistent behavior / trash delete of placed items (even if not used in outfit)
+  // added for consistent behavior / trash delete of placed items
   snapItems: boolean;
   setDraggingPlacedId: (iid: string | null) => void;
   setIsHoveringTrash: (b: boolean) => void;
@@ -39,8 +39,6 @@ export function OutfitTab(props: OutfitTabProps) {
     setDraggingClosetId,
     setDragPos,
     closet,
-    canvasWidth,
-    canvasHeight,
     placeClosetItem,
     snapItems,
     setDraggingPlacedId,
@@ -52,23 +50,25 @@ export function OutfitTab(props: OutfitTabProps) {
   // Outfit items only
   const closetItems = closet.filter((item) => item.tab === "outfit");
 
-  const [occupationFilter] = React.useState<string>("all");
-  const occupationOptions = [
+  // Filter based on TYPE now
+  const [typeFilter] = React.useState<string>("all");
+
+  const typeOptions = [
     "all",
     ...(Array.from(
-      new Set(closetItems.map((item) => item.occupation ?? "other"))
+      new Set(closetItems.map((item) => item.type ?? "other"))
     ) as string[]),
   ];
 
   const filteredCloset =
-    occupationFilter === "all"
+    typeFilter === "all"
       ? closetItems.filter(
           (item) =>
             !item.gender || item.gender === gender || item.gender === "unisex"
         )
       : closetItems.filter(
           (item) =>
-            (item.occupation ?? "other") === occupationFilter &&
+            (item.type ?? "other") === typeFilter &&
             (!item.gender || item.gender === gender || item.gender === "unisex")
         );
 
@@ -78,15 +78,12 @@ export function OutfitTab(props: OutfitTabProps) {
         className="left"
         style={{
           position: "relative",
-          zIndex: 50, // keep avatar/placed above closet column if your layout overlaps
+          zIndex: 50, // keep avatar/placed above closet column
         }}
       >
-        {/* IMPORTANT: no onDrop here -> AvatarCanvas is the only drop target to prevent duplicates */}
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          size={300}
-          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}
@@ -96,6 +93,7 @@ export function OutfitTab(props: OutfitTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
+          size={300}
         />
       </div>
 
@@ -118,7 +116,8 @@ export function OutfitTab(props: OutfitTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
-          occupationOptions={occupationOptions}
+          // Passing type options to the Closet component
+          categoryOptions={typeOptions}
         />
       </div>
     </div>

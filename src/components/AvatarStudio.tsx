@@ -6,7 +6,7 @@ import type {
   TabKey,
   ClosetItemType,
 } from "../types";
-import { CLOSET_DATA_BY_TAB, SNAP_POSITIONS } from "../closetData";
+import { CLOSET_DATA_BY_TAB, SNAP_CONFIG } from "../closetData";
 import { OutfitTab } from "./OutfitTab";
 import { BodyTab } from "./BodyTab";
 import { AccessoriesTab } from "./AccessoriesTab";
@@ -33,6 +33,11 @@ const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
   background: { snapItems: false },
 };
 
+export type ResolvedClosetItem = ClosetItem & {
+  type: ClosetItemType;
+  size: number;
+};
+
 type SnapPlacedItem = PlacedItem & {
   isSnapped?: boolean;
   snapAnchor?: { x: number; y: number };
@@ -40,6 +45,16 @@ type SnapPlacedItem = PlacedItem & {
   yNorm?: number;
   sizeNorm?: number;
 };
+
+function resolveClosetItem(item: ClosetItem): ResolvedClosetItem | null {
+  if (!item.type) return null;
+  const cfg = SNAP_CONFIG[item.type];
+  return {
+    ...item,
+    type: item.type,
+    size: cfg.size,
+  };
+}
 
 export function AvatarStudio() {
   const [gender, setGender] = React.useState<Gender>("male");
@@ -176,8 +191,10 @@ export function AvatarStudio() {
     if (isPlacingItemRef.current) return;
 
     const tabItems = CLOSET_DATA_BY_TAB[targetTab] || [];
-    const item = tabItems.find((c) => c.id === closetId);
+    const rawItem = tabItems.find((c) => c.id === closetId);
+    if (!rawItem) return;
 
+    const item = resolveClosetItem(rawItem);
     if (!item) return;
 
     const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
@@ -205,11 +222,8 @@ export function AvatarStudio() {
       xNorm = dropX / canvasSize.width - sizeNorm / 2;
       yNorm = dropY / canvasSize.height - sizeNorm / 2;
     } else {
-      const snapConfig = SNAP_POSITIONS[item.type as ClosetItemType] ?? {
-        x: 0.5,
-        y: 0.5,
-      };
-      snapAnchor = resolveSnapAnchor(snapConfig);
+      const cfg = SNAP_CONFIG[item.type] ?? { x: 0.5, y: 0.5, size: item.size };
+      snapAnchor = resolveSnapAnchor({ x: cfg.x, y: cfg.y });
       xNorm = snapAnchor.x - sizeNorm / 2;
       yNorm = snapAnchor.y - sizeNorm / 2;
     }
@@ -275,11 +289,13 @@ export function AvatarStudio() {
 
   const filteredCloset = CLOSET_DATA_BY_TAB[tab] || [];
 
-  const previewItem = draggingClosetId
+  const previewRawItem = draggingClosetId
     ? Object.values(CLOSET_DATA_BY_TAB)
         .flat()
         .find((c) => c.id === draggingClosetId) ?? null
     : null;
+
+  const previewItem = previewRawItem ? resolveClosetItem(previewRawItem) : null;
 
   const sharedTabProps = {
     gender,
@@ -480,7 +496,7 @@ function DragGhost({
   item,
   pos,
 }: {
-  item: ClosetItem | null;
+  item: ResolvedClosetItem | null;
   pos: { x: number; y: number } | null;
 }) {
   if (!item || !pos) return null;

@@ -162,13 +162,6 @@ export function BackgroundTab(props: BackgroundTabProps) {
 
   const filteredCloset = closet.filter((item) => item.tab === "background");
 
-  const occupationOptions =
-    filteredCloset.length > 0
-      ? (Array.from(
-          new Set(filteredCloset.map((item) => item.occupation ?? "all"))
-        ) as string[])
-      : [];
-
   const currentBackground = placed.find((p) => p.tab === "background");
 
   const setWallpaperBackground = (wallpaper: Wallpaper) => {
@@ -180,7 +173,8 @@ export function BackgroundTab(props: BackgroundTabProps) {
         name: `Background ${wallpaper.id}`,
         tab: "background",
         instanceId,
-        closetId: `bg-${wallpaper.id}`,
+        src: "", // No image src for color backgrounds
+        type: "body", // Default or dummy type if needed
         x: canvasWidth / 2,
         y: canvasHeight / 2,
         z: 0,
@@ -188,12 +182,7 @@ export function BackgroundTab(props: BackgroundTabProps) {
         color: wallpaper.background,
         backgroundSize: wallpaper.backgroundSize,
         backgroundRepeat: wallpaper.backgroundRepeat,
-        xNorm: 0,
-        yNorm: 0,
-        sizeNorm: 1,
-        offsetY: 0,
-        src: "",
-      } as PlacedItem & { backgroundSize?: string; backgroundRepeat?: string },
+      },
     ]);
   };
 
@@ -248,8 +237,6 @@ export function BackgroundTab(props: BackgroundTabProps) {
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          size={300}
-          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}
@@ -259,6 +246,7 @@ export function BackgroundTab(props: BackgroundTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
+          size={300}
         />
       </div>
       <div className="right" style={{ position: "relative", zIndex: 10 }}>
@@ -274,7 +262,6 @@ export function BackgroundTab(props: BackgroundTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
-          occupationOptions={occupationOptions}
         >
           {wallpaperPicker}
         </Closet>

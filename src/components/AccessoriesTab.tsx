@@ -43,8 +43,6 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
     setDraggingClosetId,
     setDragPos,
     closet,
-    canvasWidth,
-    canvasHeight,
     placeClosetItem,
     snapItems,
     setDraggingPlacedId,
@@ -68,8 +66,6 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
         <AvatarCanvas
           gender={gender}
           tab={tab}
-          size={300}
-          offsetY={0}
           placed={placed}
           setPlaced={setPlaced}
           freelyDraggable={!snapItems}
@@ -79,6 +75,7 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
+          size={300}
         />
       </div>
 
@@ -101,12 +98,6 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
-          occupationOptions={[
-            "all",
-            ...(Array.from(
-              new Set(filteredCloset.map((item) => item.occupation ?? "other"))
-            ) as string[]),
-          ]}
         />
       </div>
     </div>
