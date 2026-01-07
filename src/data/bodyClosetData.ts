@@ -18,6 +18,7 @@ export const bodyClosetData: ClosetItem[] = [
     src: boyHair1,
     gender: "male",
     tab: "body",
+    occupation: "hello",
   },
   {
     id: "boyHair2",

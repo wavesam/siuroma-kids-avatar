@@ -27,7 +27,7 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
 
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
   body: { snapItems: true },
-  outfit: { snapItems: true },
+  outfit: { snapItems: false },
   accessories: { snapItems: true },
   canvas: { snapItems: false },
   background: { snapItems: false },

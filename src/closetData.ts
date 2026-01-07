@@ -7,7 +7,7 @@ import { backgroundClosetData } from "./data/backgroundClosetData";
 
 export const SNAP_POSITIONS: Record<ClosetItemType, { x: number; y: number }> =
   {
-    hair: { x: 0, y: 0 },
+    hair: { x: 1, y: 1 },
     hat: { x: 0.5, y: 0.05 },
     glasses: { x: 0.5, y: 0.22 },
     shirt: { x: 0.5, y: 0.4 },
