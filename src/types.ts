@@ -1,3 +1,4 @@
+// Types (add color support)
 export type TabKey =
   | "body"
   | "outfit"
@@ -29,6 +30,7 @@ export interface ClosetItem {
   src: string;
   gender?: Gender | "unisex";
   tab: TabKey;
+  color?: string; // optional for color-only backgrounds
 }
 
 export interface PlacedItem extends ClosetItem {
@@ -36,4 +38,5 @@ export interface PlacedItem extends ClosetItem {
   x: number;
   y: number;
   z: number;
+  color?: string; // optional for color-only backgrounds
 }

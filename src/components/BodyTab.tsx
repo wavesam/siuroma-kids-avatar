@@ -72,6 +72,7 @@ export function BodyTab(props: BodyTabProps) {
 
   const genderSelector = (
     <div>
+      <span>Select Your Gender:</span>
       <label htmlFor="gender-male">
         <input
           type="radio"
@@ -131,6 +132,7 @@ export function BodyTab(props: BodyTabProps) {
           }}
           occupationOptions={occupationOptions}
         >
+          <h1>Body</h1>
           {genderSelector}
         </Closet>
       </div>

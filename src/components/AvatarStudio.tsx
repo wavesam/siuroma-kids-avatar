@@ -20,9 +20,9 @@ const CANVAS_ASPECT = CANVAS_WIDTH / CANVAS_HEIGHT;
 const TABS: { key: TabKey; label: string; number: number }[] = [
   { key: "body", label: "Body", number: 1 },
   { key: "outfit", label: "Outfit", number: 2 },
-  { key: "accessories", label: "Accessories", number: 3 },
-  { key: "canvas", label: "Canvas", number: 4 },
-  { key: "background", label: "Background", number: 5 },
+  { key: "background", label: "Background", number: 3 },
+  { key: "accessories", label: "Accessories", number: 4 },
+  { key: "canvas", label: "Canvas", number: 5 },
 ];
 
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
@@ -65,6 +65,8 @@ export function AvatarStudio() {
     height: CANVAS_HEIGHT,
   });
 
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+
   React.useLayoutEffect(() => {
     const MARGIN = 48;
     const HEADER_RESERVE = 220;
@@ -98,7 +100,6 @@ export function AvatarStudio() {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  // Rehydrate all items (snapped or free) when the canvas resizes using normalized data.
   React.useEffect(() => {
     setPlaced((current) =>
       current.map((p) => {
@@ -198,7 +199,6 @@ export function AvatarStudio() {
       sizeNorm: number,
       snapAnchor: { x: number; y: number } | undefined;
 
-    // size normalized to canvas width
     sizeNorm = item.size / canvasSize.width;
 
     if (!snapItems && typeof dropX === "number" && typeof dropY === "number") {
@@ -315,14 +315,14 @@ export function AvatarStudio() {
     case "outfit":
       TabContent = <OutfitTab {...sharedTabProps} />;
       break;
+    case "background":
+      TabContent = <BackgroundTab {...sharedTabProps} />;
+      break;
     case "accessories":
       TabContent = <AccessoriesTab {...sharedTabProps} />;
       break;
     case "canvas":
       TabContent = <CanvasTab {...sharedTabProps} />;
-      break;
-    case "background":
-      TabContent = <BackgroundTab {...sharedTabProps} />;
       break;
     default:
       TabContent = null;
@@ -354,23 +354,53 @@ export function AvatarStudio() {
     [progressPercent]
   );
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "My avatar",
+          text: "Check out my avatar!",
+        });
+      } catch (err) {
+        console.warn("Share cancelled or failed", err);
+      }
+    } else {
+      window.alert("Sharing is not supported in this browser.");
+    }
+  };
+
+  const handleDownload = () => {
+    window.alert("Download coming soon. Hook into your canvas export here.");
+  };
+
   return (
     <div className="studio">
       <div className="studioMain">
         <div className="studioTopBar" />
-        <div className="studioTabsBar" style={tabProgressStyle}>
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              aria-selected={tab === t.key}
-              className={tab === t.key ? "studioTab tabSelected" : "studioTab"}
-              type="button"
-            >
-              <span className="studioTabNumber">{t.number}</span>
-              <span className="studioTabLabel">{t.label}</span>
-            </button>
-          ))}
+        <div className="studioTabsBarWrapper">
+          <div className="studioTabsBar" style={tabProgressStyle}>
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                aria-selected={tab === t.key}
+                className={
+                  tab === t.key ? "studioTab tabSelected" : "studioTab"
+                }
+                type="button"
+              >
+                <span className="studioTabNumber">{t.number}</span>
+                <span className="studioTabLabel">{t.label}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="studioFinishButton"
+            onClick={() => setIsPreviewOpen(true)}
+          >
+            Finish
+          </button>
         </div>
 
         {TabContent}
@@ -385,6 +415,62 @@ export function AvatarStudio() {
             onDrop={handleTrashDrop}
           />
         )}
+
+        {isPreviewOpen && (
+          <SavePreviewModal
+            onClose={() => setIsPreviewOpen(false)}
+            onDownload={handleDownload}
+            onShare={handleShare}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SavePreviewModal({
+  onClose,
+  onDownload,
+  onShare,
+}: {
+  onClose: () => void;
+  onDownload: () => void;
+  onShare: () => void;
+}) {
+  return (
+    <div className="savePreviewOverlay" role="dialog" aria-modal="true">
+      <div className="savePreviewCard">
+        <div className="savePreviewHeader">
+          <h2>Preview</h2>
+          <button
+            type="button"
+            aria-label="Close preview"
+            className="iconButton"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
+        <div className="savePreviewBody">
+          <div className="previewFrame">
+            <p className="previewHint">
+              Your final avatar preview can render here. Hook up your canvas
+              export or snapshot.
+            </p>
+          </div>
+          <div className="saveActions">
+            <button
+              type="button"
+              className="primaryAction"
+              onClick={onDownload}
+            >
+              Download
+            </button>
+            <button type="button" className="secondaryAction" onClick={onShare}>
+              Share
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,26 +1,37 @@
 @import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap");
 
-/* Theme tokens */
+/* Theme tokens updated to match "chunky" aesthetic */
 :root {
+  /* Kept the fun background gradient colors but refined others */
   --bg1: #c9f1ff;
   --bg2: #ffdff7;
   --bg3: #fff6c9;
-  --ink: #1d2b44;
-  --muted: #5f6c85;
-  --card: rgba(255, 255, 255, 0.92);
-  --border: #e6edff;
-  --shadow: 0 16px 36px rgba(22, 43, 88, 0.16);
-  --shadow2: 0 12px 22px rgba(22, 43, 88, 0.12);
+
+  --ink: #2d3436; /* Dark charcoal for text */
+  --muted: #636e72; /* Muted gray */
+
+  --card: #ffffff; /* Solid white cards */
+  --border: #dfe6e9; /* Light gray border from canvastab */
+
+  /* Hard shadows for the chunky feel */
+  --shadow-hard: 0 4px 0 #b2bec3;
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.04);
+
   --radius: 20px;
-  --closet-item-bg: rgba(255, 255, 255, 0.94);
-  --closet-item-hover-bg: rgba(243, 248, 255, 0.96);
-  --brand-1: #1e9bff;
-  --brand-2: #5c5fff;
-  --brand-3: #ff7ad1;
-  --brand-4: #ffd166;
-  --success: #4cd691;
-  --danger: #f25f5c;
-  --tab-progress-height: 10px;
+
+  --closet-item-bg: #ffffff;
+  --closet-item-hover-bg: #f8f9fa;
+
+  /* Brand colors from canvastab */
+  --brand-1: #0984e3; /* Bright Blue */
+  --brand-2: #6c5ce7; /* Purple */
+  --brand-3: #ff7ad1; /* Pink */
+  --brand-4: #ffd166; /* Yellow */
+
+  --success: #00b894; /* Green */
+  --danger: #d63031; /* Red */
+
+  --tab-progress-height: 12px;
 }
 
 * {
@@ -47,11 +58,11 @@ body {
 
 .card {
   background: var(--card);
-  backdrop-filter: blur(10px);
   padding: 16px;
-  box-shadow: var(--shadow);
-  border-radius: var(--radius);
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow-subtle);
+  border-radius: 18px;
+  border: 1px solid #f1f2f6;
+  /* Removed glassmorphism/blur for solid chunky look */
 }
 
 /* Headings */
@@ -59,6 +70,8 @@ h1,
 h2 {
   margin: 0 0 10px;
   letter-spacing: 0.2px;
+  font-weight: 800; /* Chunkier headings */
+  color: #2d3436;
 }
 h1 {
   font-size: 26px;
@@ -73,27 +86,36 @@ h2 {
   flex-wrap: wrap;
 }
 
-/* Buttons */
+/* Buttons - transformed to match big-tool-btn style */
 button {
   padding: 12px 16px;
-  border-radius: 999px;
-  border: 2px solid rgba(36, 50, 74, 0.12);
+  border-radius: 16px; /* Squarer radius */
+  border: 2px solid var(--border);
   background: white;
   cursor: pointer;
-  font-weight: 700;
-  min-height: 44px;
-  transition: transform 0.11s, box-shadow 0.16s, background 0.16s;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.04);
+  font-weight: 800;
+  min-height: 48px;
+  color: var(--ink);
+  transition: transform 0.1s ease, background-color 0.2s, box-shadow 0.1s;
+
+  /* Hard shadow */
+  box-shadow: 0 4px 0 var(--border);
 }
+
 button:hover {
+  background-color: #f8f9fa;
+  border-color: #b2bec3;
+  box-shadow: 0 4px 0 #b2bec3;
   transform: translateY(-1px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.06);
 }
+
 button:active {
-  transform: translateY(1px) scale(0.99);
+  transform: translateY(4px); /* Push down effect */
+  box-shadow: none;
 }
+
 button:focus-visible {
-  outline: 3px solid rgba(30, 155, 255, 0.4);
+  outline: 3px solid rgba(9, 132, 227, 0.4);
   outline-offset: 2px;
 }
 
@@ -122,34 +144,41 @@ button:focus-visible {
   top: 24px;
   left: 24px;
   z-index: 10;
-  pointer-events: none; /* Fix: prevent invisible container from blocking tabs */
+  pointer-events: none;
 }
 .studioTopBar > * {
-  pointer-events: auto; /* Re-enable clicks for actual buttons inside */
+  pointer-events: auto;
 }
 
 .hint {
   color: var(--muted);
   font-size: 14px;
+  font-weight: 600;
 }
 
-/* Tabs Styling */
+/* Tabs Styling - Updated to be chunkier */
+.studioTabsBarWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+}
+
 .studioTabsBar {
   display: flex;
   flex-direction: row;
   align-items: stretch;
   height: 100px;
   width: 100%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), #eef3fa);
-  box-shadow: 0 1px 0 #aaccec;
+  background: #ffffff;
+  border-bottom: 2px solid var(--border);
   margin-top: 0;
   z-index: 2;
   position: relative;
   overflow: hidden;
-  cursor: pointer; /* Fix: ensure pointer cursor even on sub-pixel gaps */
+  cursor: pointer;
+  flex: 5;
 }
 
-/* Progress track */
 .studioTabsBar::before {
   content: "";
   position: absolute;
@@ -157,12 +186,11 @@ button:focus-visible {
   right: 0;
   bottom: 0;
   height: var(--tab-progress-height);
-  background: #d8e7f7;
+  background: #f1f2f6;
   z-index: 2;
   pointer-events: none;
 }
 
-/* Progress indicator */
 .studioTabsBar::after {
   content: "";
   position: absolute;
@@ -170,28 +198,26 @@ button:focus-visible {
   bottom: 0;
   height: var(--tab-progress-height);
   width: var(--tab-progress, 20%);
-  background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
-  box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.25) inset,
-    0 6px 14px rgba(25, 118, 210, 0.16);
+  background: var(--brand-1);
   transition: width 0.22s ease, background 0.2s ease;
   z-index: 3;
   pointer-events: none;
+  border-radius: 0 4px 0 0;
 }
 
-/* Tab Button */
 .studioTab {
   flex: 1 1 0;
   border: none;
   background: transparent;
-  color: #44506a;
+  color: #b2bec3;
   padding: 0 10px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: inherit;
   height: 100%;
   border-radius: 0;
   outline: none;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s, font-weight 0.2s, transform 0.1s;
+  transition: all 0.2s;
   box-shadow: none;
   margin: 0;
   border-bottom: 0;
@@ -201,7 +227,6 @@ button:focus-visible {
   position: relative;
   z-index: 1;
 }
-/* Ensure everything inside triggers pointer */
 .studioTab *,
 .studioTab {
   cursor: pointer;
@@ -213,12 +238,13 @@ button:focus-visible {
   justify-content: center;
   font-size: 2.35rem;
   font-weight: 800;
-  color: var(--brand-1);
+  color: inherit;
   margin-right: 14px;
   min-width: 44px;
   height: 100%;
   letter-spacing: -2px;
   font-family: "Fredoka", sans-serif;
+  opacity: 0.5;
 }
 
 .studioTabLabel {
@@ -232,31 +258,30 @@ button:focus-visible {
 /* Selected tab */
 .studioTab.tabSelected,
 .studioTab[aria-selected="true"] {
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--brand-2);
+  background: #f0f2f5;
+  color: var(--brand-1);
   font-size: 1.2rem;
   font-weight: 800;
   z-index: 1;
-  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.04);
+}
+.studioTab.tabSelected .studioTabNumber,
+.studioTab[aria-selected="true"] .studioTabNumber {
+  opacity: 1;
 }
 
 .studioTab:hover:not(.tabSelected):not([aria-selected="true"]) {
-  background: rgba(255, 255, 255, 0.65);
-  color: var(--brand-1);
-  font-weight: 700;
-  transform: translateY(-1px);
+  background: #f8f9fa;
+  color: var(--muted);
 }
 
 .studioTab:active {
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--brand-2);
-  transform: scale(0.99) translateY(1px);
+  background: #dfe6e9;
 }
 
 .studioTab:focus-visible {
   outline: 3px solid rgba(30, 155, 255, 0.35);
   outline-offset: -2px;
-  background: rgba(255, 255, 255, 0.82);
+  background: #f8f9fa;
 }
 
 .studioTab:disabled {
@@ -267,6 +292,32 @@ button:focus-visible {
 .studioTab:disabled *,
 .studioTab:disabled {
   cursor: not-allowed;
+}
+
+.studioFinishButton {
+  height: 100px;
+  padding: 0 10px;
+  border-radius: 0;
+  border: none;
+  background: var(--success);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+  transition: filter 0.16s ease;
+  z-index: 4;
+  align-self: stretch;
+  flex: 1 1 0;
+  transform: none !important;
+}
+.studioFinishButton:hover {
+  background: var(--success);
+  filter: brightness(1.05);
+  transform: none !important;
+}
+.studioFinishButton:active {
+  box-shadow: inset 0 4px 0 rgba(0, 0, 0, 0.1);
+  transform: none !important;
 }
 
 /* Responsive tweaks for tabs */
@@ -286,6 +337,9 @@ button:focus-visible {
   }
   :root {
     --tab-progress-height: 8px;
+  }
+  .studioFinishButton {
+    height: 64px;
   }
 }
 
@@ -322,14 +376,11 @@ button:focus-visible {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.8),
-    rgba(233, 241, 255, 0.92)
-  );
+  background: var(--avatar-bg);
   border-radius: var(--radius);
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
-  box-shadow: var(--shadow2);
+  /* Chunky border */
+  border: 4px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .avatarStage {
@@ -340,7 +391,9 @@ button:focus-visible {
   width: auto;
   height: auto;
   pointer-events: none;
+  background: var(--avatar-bg);
 }
+
 .placedItem {
   position: absolute;
   cursor: grab;
@@ -353,7 +406,7 @@ button:focus-visible {
 .placedItemShell {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 12px 12px rgba(20, 30, 60, 0.16));
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.1));
 }
 .placedItemShell svg {
   width: 100%;
@@ -365,16 +418,16 @@ button:focus-visible {
 .closet {
   margin-top: 0;
   padding: 16px;
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: #ffffff;
   border-radius: var(--radius);
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
-  box-shadow: var(--shadow2);
+  border: 1px solid #f1f2f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: visible;
+  overflow: auto;
 }
 
 .closetGrid {
@@ -382,33 +435,33 @@ button:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   overflow: visible;
-  padding: 8px 4px 12px;
 }
 
 .closetItem {
   background: var(--closet-item-bg);
-  border: 2px dashed rgba(36, 50, 74, 0.14);
-  border-radius: 18px;
+  border: 2px solid var(--border);
+  border-radius: 16px;
   padding: 12px;
   display: grid;
   place-items: center;
   gap: 8px;
-  transition: border-style 0.15s, transform 0.12s, box-shadow 0.12s,
-    background 0.12s;
+  transition: transform 0.1s ease, box-shadow 0.1s, background-color 0.2s;
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(22, 43, 88, 0.08);
+  /* Hard shadow like tools */
+  box-shadow: 0 4px 0 var(--border);
 }
 .closetItem:active,
 .closetItem:focus {
-  transform: scale(0.99) translateY(1px);
-  outline: 2px solid var(--border);
+  transform: translateY(4px);
+  box-shadow: none;
+  outline: 2px solid var(--brand-1);
 }
 .closetItem:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   background: var(--closet-item-hover-bg);
-  border-style: solid;
+  border-color: #b2bec3;
+  box-shadow: 0 4px 0 #b2bec3;
   cursor: grab;
-  box-shadow: 0 14px 26px rgba(22, 43, 88, 0.14);
 }
 
 .closetPreview {
@@ -427,8 +480,10 @@ button:focus-visible {
 .closetLabel {
   font-size: 14px;
   font-weight: 800;
-  color: rgba(36, 50, 74, 0.9);
+  color: #2d3436;
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Whole-page drag preview ghost */
@@ -438,7 +493,7 @@ button:focus-visible {
   pointer-events: none;
   z-index: 9999;
   opacity: 0.9;
-  filter: drop-shadow(0 14px 18px rgba(20, 30, 60, 0.2));
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.1));
 }
 .dragGhostInner {
   width: 100%;
@@ -461,10 +516,119 @@ button:focus-visible {
 /* Trash can */
 .trashCan {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  border: 2px solid #dfe6e9;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 4px 0 #dfe6e9;
+  padding: 12px;
 }
 .trashCan:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 22px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 4px 0 #b2bec3;
+  border-color: #b2bec3;
+}
+
+/* Save preview modal */
+.savePreviewOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 52, 54, 0.5); /* Darker overlay */
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 99999;
+  padding: 16px;
+}
+
+.savePreviewCard {
+  background: #fff;
+  border-radius: 20px;
+  width: min(90vw, 720px);
+  max-width: 720px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 1px solid #dfe6e9;
+  overflow: hidden;
+}
+
+.savePreviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 2px solid #f1f2f6;
+}
+
+.savePreviewBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.previewFrame {
+  background: #f8f9fa;
+  border: 2px dashed #b2bec3;
+  border-radius: 16px;
+  min-height: 340px;
+  display: grid;
+  place-items: center;
+  color: #636e72;
+  text-align: center;
+  padding: 16px;
+}
+
+.previewHint {
+  margin: 0;
+  font-weight: 600;
+  max-width: 420px;
+}
+
+.saveActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primaryAction {
+  background: var(--success);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 #009174;
+  cursor: pointer;
+}
+.primaryAction:active {
+  box-shadow: none;
+  transform: translateY(4px);
+}
+
+.secondaryAction {
+  background: #dfe6e9;
+  color: #2d3436;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 #b2bec3;
+  cursor: pointer;
+}
+.secondaryAction:active {
+  box-shadow: none;
+  transform: translateY(4px);
+}
+
+.iconButton {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.iconButton:hover {
+  background: #f1f2f6;
 }
 
 /* Responsive */

@@ -17,7 +17,7 @@ const OCC_IMAGES: Record<string, string> = {
 export function Closet({
   items,
   avatarGender,
-  tab, // unused but kept for interface consistency
+  tab,
   onStartDrag,
   onEndDrag,
   occupationOptions,
@@ -28,21 +28,23 @@ export function Closet({
   tab: TabKey;
   onStartDrag: (id: string) => void;
   onEndDrag: () => void;
-  occupationOptions: string[];
+  occupationOptions?: string[];
   children?: ReactNode;
 }) {
-  const [selectedOcc, setSelectedOcc] = useState<string | null>(null);
+  const hasOccupations = !!(occupationOptions && occupationOptions.length > 0);
+  const [selectedOcc, setSelectedOcc] = useState<string | null>(
+    hasOccupations ? null : "all"
+  );
 
   const pretty = (s: string) =>
     s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1);
 
-  if (!selectedOcc) {
+  if (hasOccupations && !selectedOcc) {
     return (
       <div className="closet card">
-        <h1>Closet</h1>
         {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
         <div className="closetGrid">
-          {occupationOptions.map((occ) => (
+          {occupationOptions!.map((occ) => (
             <div
               className="closetItem"
               key={occ}
@@ -74,58 +76,52 @@ export function Closet({
     );
   }
 
-  const filteredItems = items.filter(
-    (it) =>
-      (!it.gender || it.gender === "unisex" || it.gender === avatarGender) &&
-      (selectedOcc === "all" || it.occupation === selectedOcc)
-  );
+  const filteredItems = items.filter((it) => {
+    const genderOk =
+      !it.gender || it.gender === "unisex" || it.gender === avatarGender;
+
+    const occupationOk =
+      !hasOccupations || selectedOcc === "all" || it.occupation === selectedOcc;
+
+    return genderOk && occupationOk;
+  });
 
   return (
     <div className="closet card">
-      <button onClick={() => setSelectedOcc(null)}>← Back</button>
+      {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
+      {hasOccupations && (
+        <button onClick={() => setSelectedOcc(null)}>← Back</button>
+      )}
       <div className="closetGrid">
-        {filteredItems.length ? (
-          filteredItems.map((it) => (
-            <div
-              key={it.id}
-              className="closetItem"
-              draggable
-              onDragStart={(e) => {
-                console.log("🎒 [Closet onDragStart] 从衣柜开始拖拽", {
-                  id: it.id,
-                  name: it.name,
-                  type: it.type,
-                  occupation: it.occupation,
-                });
-                onStartDrag(it.id);
-                // Set the drag image to empty so we can use our custom DragGhost
-                e.dataTransfer.setDragImage(emptyImg, 0, 0);
-                e.dataTransfer.setData("application/x-avatar-item-id", it.id);
-                e.dataTransfer.setData("text/plain", it.id);
-                e.dataTransfer.effectAllowed = "copy";
-              }}
-              onDragEnd={onEndDrag}
-            >
-              <div className="closetPreview">
-                <img
-                  src={it.src}
-                  alt={it.name}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    pointerEvents: "none",
-                  }}
-                />
-              </div>
-              <div className="closetLabel">{it.name}</div>
+        {filteredItems.map((it) => (
+          <div
+            key={it.id}
+            className="closetItem"
+            draggable
+            onDragStart={(e) => {
+              onStartDrag(it.id);
+              e.dataTransfer.setDragImage(emptyImg, 0, 0);
+              e.dataTransfer.setData("application/x-avatar-item-id", it.id);
+              e.dataTransfer.setData("text/plain", it.id);
+              e.dataTransfer.effectAllowed = "copy";
+            }}
+            onDragEnd={onEndDrag}
+          >
+            <div className="closetPreview">
+              <img
+                src={it.src}
+                alt={it.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  pointerEvents: "none",
+                }}
+              />
             </div>
-          ))
-        ) : (
-          <div style={{ padding: 20, color: "#aaa" }}>
-            No items for this occupation.
+            <div className="closetLabel">{it.name}</div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

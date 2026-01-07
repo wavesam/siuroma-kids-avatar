@@ -1,12 +1,15 @@
 import React from "react";
 import type { PlacedItem, Gender, TabKey } from "../types";
-import boyAvatar from "../assets/boys only/boy body.png";
-import girlAvatar from "../assets/girls only/girl body.png";
+import boyAvatar from "../assets/boys only/body/boy body.png";
+import girlAvatar from "../assets/girls only/body/girl body.png";
 
 type PlacedWithNorm = PlacedItem & {
   xNorm?: number;
   yNorm?: number;
   sizeNorm?: number;
+  color?: string; // CSS background string
+  backgroundSize?: string;
+  backgroundRepeat?: string;
 };
 
 function AvatarImage({
@@ -88,7 +91,17 @@ export function AvatarCanvas({
   const avatarStageRef = React.useRef<HTMLDivElement | null>(null);
   const avatarCanvasRef = React.useRef<HTMLDivElement | null>(null);
 
-  // Keep live stage dimensions; used to render px values from normalized data.
+  // Compute background style from the last placed background item (if any)
+  const backgroundItem = [...placed]
+    .filter((p) => p.tab === "background")
+    .pop() as PlacedWithNorm | undefined;
+
+  const background = backgroundItem?.color;
+  const backgroundSize = backgroundItem?.backgroundSize;
+  const backgroundRepeat =
+    backgroundItem?.backgroundRepeat ??
+    (backgroundSize ? "repeat" : "no-repeat");
+
   React.useLayoutEffect(() => {
     const el = avatarStageRef.current;
     if (!el) return;
@@ -132,7 +145,6 @@ export function AvatarCanvas({
 
     const xNorm = item.xNorm ?? item.x / rect.width;
     const yNorm = item.yNorm ?? item.y / rect.height;
-    const sizeNorm = item.sizeNorm ?? (item.size ? item.size / rect.width : 0);
 
     const renderX = xNorm * rect.width;
     const renderY = yNorm * rect.height;
@@ -143,7 +155,7 @@ export function AvatarCanvas({
     const dragInfo = { id, offsetXRatio, offsetYRatio };
     dragPlacingRef.current = dragInfo;
     setDragPlacing(dragInfo);
-    setDraggingPlacedId(id);
+    setDraggingPlacedId?.(id);
 
     document.body.style.cursor = "grabbing";
     e.stopPropagation();
@@ -208,11 +220,11 @@ export function AvatarCanvas({
         removePlacedByInstanceId(dragPlacingRef.current.id);
       }
 
-      if (setDraggingPlacedId) setDraggingPlacedId(null);
+      setDraggingPlacedId?.(null);
       dragPlacingRef.current = null;
       setDragPlacing(null);
       document.body.style.cursor = "";
-      if (setIsHoveringTrash) setIsHoveringTrash(false);
+      setIsHoveringTrash?.(false);
     }
 
     window.addEventListener("mousemove", onMouseMove);
@@ -232,7 +244,6 @@ export function AvatarCanvas({
 
   const isProcessingDropRef = React.useRef(false);
 
-  // Drop handler converts to normalized coords so zoom/resizes don't drift.
   const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
 
@@ -287,6 +298,15 @@ export function AvatarCanvas({
     }, 100);
   };
 
+  const backgroundStyle =
+    background != null
+      ? {
+          background,
+          backgroundSize: backgroundSize ?? "auto",
+          backgroundRepeat: backgroundRepeat,
+        }
+      : { background: "transparent" as const };
+
   return (
     <div
       className="avatarCanvas"
@@ -298,6 +318,7 @@ export function AvatarCanvas({
         overflow: "visible",
         touchAction: "none",
         zIndex: 100,
+        ...backgroundStyle, // apply wallpaper only on the canvas
       }}
       onDragOver={(e) => {
         if (dragPlacingRef.current) {
@@ -321,6 +342,7 @@ export function AvatarCanvas({
           height: "auto",
           pointerEvents: "auto",
           zIndex: 200,
+          background: "transparent", // keep stage transparent to avoid misaligned gradients
         }}
         ref={avatarStageRef}
         onDragOver={(e) => {
@@ -351,6 +373,11 @@ export function AvatarCanvas({
 
           const left = xNorm * stageW;
           const top = yNorm * stageH;
+
+          // Skip drawing color-only background (already applied via canvas style)
+          if (item.tab === "background" && item.color && !item.src) {
+            return null;
+          }
 
           return (
             <div
@@ -384,18 +411,20 @@ export function AvatarCanvas({
                 }
               }}
             >
-              <img
-                src={item.src}
-                alt={item.name}
-                draggable={false}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                }}
-              />
+              {item.src ? (
+                <img
+                  src={item.src}
+                  alt={item.name}
+                  draggable={false}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}
+                />
+              ) : null}
             </div>
           );
         })}
