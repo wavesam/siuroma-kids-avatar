@@ -1,0 +1,218 @@
+.canvasDrawingSidebar {
+  width: 220px;
+  min-width: 220px;
+  background: var(--card);
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.canvasDrawingSidebar h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--brand-2);
+}
+
+.toolSection,
+.brushSettings,
+.historySection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toolButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.toolButton {
+  flex: 1;
+  min-height: 60px;
+  font-size: 28px;
+  padding: 12px;
+  border: 2px solid rgba(36, 50, 74, 0.12);
+  background: white;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--brand-1);
+}
+
+.toolButton.active {
+  background: var(--brand-1);
+  border-color: var(--brand-1);
+  box-shadow: 0 4px 12px rgba(30, 155, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.brushSettings label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.brushSettings input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.brushSettings input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--brand-1);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.brushSettings input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--brand-1);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.brushSettings input[type="color"] {
+  width: 100%;
+  height: 50px;
+  border: 2px solid rgba(36, 50, 74, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.brushSettings input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.brushSettings input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+
+.historyButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.historyButton {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid rgba(36, 50, 74, 0.12);
+  background: white;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.historyButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--brand-1);
+  background: var(--brand-1);
+  color: white;
+}
+
+.historyButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.historyButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.canvasContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.drawingCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  z-index: 300;
+  touch-action: none;
+  border-radius: var(--radius);
+}
+
+/* Hide scrollbar for sidebar */
+.canvasDrawingSidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.canvasDrawingSidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.canvasDrawingSidebar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.canvasDrawingSidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 980px) {
+  .canvasDrawingSidebar {
+    width: 100%;
+    min-width: 0;
+    max-height: 200px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .toolSection,
+  .brushSettings,
+  .historySection {
+    flex: 1;
+    min-width: 150px;
+  }
+}
