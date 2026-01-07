@@ -1,7 +1,7 @@
 import React from "react";
 import type { PlacedItem, Gender, TabKey } from "../types";
-import boyAvatar from "../assets/boys only/boy body.png";
-import girlAvatar from "../assets/girls only/girl body.png";
+import boyAvatar from "../assets/boys only/body/boy body.png";
+import girlAvatar from "../assets/girls only/body/girl body.png";
 
 type PlacedWithNorm = PlacedItem & {
   xNorm?: number;
