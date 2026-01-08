@@ -35,6 +35,13 @@ interface CanvasTabProps {
 }
 
 type DrawingTool = "brush" | "eraser";
+type BrushStyle =
+  | "solid"
+  | "marker"
+  | "spray"
+  | "calligraphy"
+  | "neon"
+  | "dashed";
 
 const DRAWING_LAYER_ID = "drawing-layer";
 const MAX_HISTORY = 50;
@@ -63,11 +70,9 @@ export function CanvasTab(props: CanvasTabProps) {
   } = props;
 
   const [tool, setTool] = React.useState<DrawingTool>("brush");
+  const [brushStyle, setBrushStyle] = React.useState<BrushStyle>("solid");
   const [brushSize, setBrushSize] = React.useState(10);
   const [brushColor, setBrushColor] = React.useState("#333333");
-  const [multiPointEnabled, setMultiPointEnabled] = React.useState(false);
-  const [multiPointCount, setMultiPointCount] = React.useState(5);
-  const [multiPointSpread, setMultiPointSpread] = React.useState(10);
 
   const canvasContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [isDrawing, setIsDrawing] = React.useState(false);
@@ -183,14 +188,11 @@ export function CanvasTab(props: CanvasTabProps) {
     if (!canvas) return;
     if (isRestoringRef.current) return;
 
-    // Ensure canvas internal size matches DOM size before snapshot
     syncCanvasResolution();
 
     try {
-      // Save as PNG snapshot
       const dataUrl = canvas.toDataURL("image/png");
 
-      // Truncate redo states if we are not at the end
       const idx = drawingHistoryIndexRef.current;
       if (idx < drawingHistoryRef.current.length - 1) {
         drawingHistoryRef.current = drawingHistoryRef.current.slice(0, idx + 1);
@@ -233,14 +235,13 @@ export function CanvasTab(props: CanvasTabProps) {
       const dataUrl = history[index];
       if (!dataUrl) return;
 
-      // Ensure canvas resolution is correct for current layout, then render snapshot
       syncCanvasResolution();
       await renderDataUrlToCanvas(dataUrl);
 
       drawingHistoryIndexRef.current = index;
       updateHistoryButtons();
 
-      // Crucial: persist restored snapshot so tab switches don’t “revert”
+      // Persist restored snapshot so tab switches don’t “revert”
       persistDrawingLayer(dataUrl);
     },
     [
@@ -268,13 +269,41 @@ export function CanvasTab(props: CanvasTabProps) {
     }
   }, [restoreState, drawingHistoryIndexRef, drawingHistoryRef]);
 
+  const clearAllDrawing = React.useCallback(() => {
+    const canvas = drawingCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    syncCanvasResolution();
+
+    // Clear in raw pixel space, then restore CSS-pixel transform
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const dpr = dprRef.current || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const blank = canvas.toDataURL("image/png");
+    drawingHistoryRef.current = [blank];
+    drawingHistoryIndexRef.current = 0;
+    updateHistoryButtons();
+    persistDrawingLayer(blank);
+  }, [
+    drawingCanvasRef,
+    drawingHistoryRef,
+    drawingHistoryIndexRef,
+    persistDrawingLayer,
+    syncCanvasResolution,
+    updateHistoryButtons,
+  ]);
+
   React.useEffect(() => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
 
     syncCanvasResolution();
-
-    // Buttons should reflect whatever persisted history exists (from parent refs)
     updateHistoryButtons();
 
     const savedDrawing = placed.find((p) => p.id === DRAWING_LAYER_ID);
@@ -283,22 +312,17 @@ export function CanvasTab(props: CanvasTabProps) {
       if (savedDrawing?.src) {
         await renderDataUrlToCanvas(savedDrawing.src);
 
-        // Initialize history only if empty (so switching tabs doesn’t wipe undo stack)
         if (drawingHistoryRef.current.length === 0) {
           drawingHistoryRef.current = [savedDrawing.src];
           drawingHistoryIndexRef.current = 0;
           updateHistoryButtons();
         } else {
-          // Ensure current history snapshot is rendered (in case resize changed)
           const idx = drawingHistoryIndexRef.current;
           const cur = drawingHistoryRef.current[idx];
-          if (cur) {
-            await renderDataUrlToCanvas(cur);
-          }
+          if (cur) await renderDataUrlToCanvas(cur);
           updateHistoryButtons();
         }
       } else {
-        // No saved image: ensure we at least have a blank initial state
         if (drawingHistoryRef.current.length === 0) {
           const blank = canvas.toDataURL("image/png");
           drawingHistoryRef.current = [blank];
@@ -308,9 +332,7 @@ export function CanvasTab(props: CanvasTabProps) {
         } else {
           const idx = drawingHistoryIndexRef.current;
           const cur = drawingHistoryRef.current[idx];
-          if (cur) {
-            await renderDataUrlToCanvas(cur);
-          }
+          if (cur) await renderDataUrlToCanvas(cur);
           updateHistoryButtons();
         }
       }
@@ -322,7 +344,6 @@ export function CanvasTab(props: CanvasTabProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-sync canvas resolution on layout changes WITHOUT pushing new history entries
   React.useEffect(() => {
     if (isInitializingRef.current) return;
 
@@ -330,9 +351,7 @@ export function CanvasTab(props: CanvasTabProps) {
 
     const idx = drawingHistoryIndexRef.current;
     const cur = drawingHistoryRef.current[idx];
-    if (cur) {
-      void renderDataUrlToCanvas(cur);
-    }
+    if (cur) void renderDataUrlToCanvas(cur);
   }, [
     canvasWidth,
     canvasHeight,
@@ -353,25 +372,6 @@ export function CanvasTab(props: CanvasTabProps) {
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  const drawMultiPoint = React.useCallback(
-    (
-      center: { x: number; y: number },
-      ctx: CanvasRenderingContext2D,
-      size: number
-    ) => {
-      for (let i = 0; i < multiPointCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const distance = Math.random() * multiPointSpread;
-        const x = center.x + Math.cos(angle) * distance;
-        const y = center.y + Math.sin(angle) * distance;
-        ctx.beginPath();
-        ctx.arc(x, y, (size * (0.6 + Math.random() * 0.4)) / 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    },
-    [multiPointCount, multiPointSpread]
-  );
-
   const draw = React.useCallback(
     (
       point: { x: number; y: number },
@@ -382,13 +382,21 @@ export function CanvasTab(props: CanvasTabProps) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Ensure correct transform for CSS-pixel drawing
       const dpr = dprRef.current || 1;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Reset per-stroke side effects
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = "transparent";
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
 
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
+      // Tool setup
       if (tool === "brush") {
         ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = brushColor;
@@ -401,43 +409,167 @@ export function CanvasTab(props: CanvasTabProps) {
         ctx.lineWidth = brushSize * 2;
       }
 
-      if (multiPointEnabled && tool === "brush") {
-        if (prevPoint) {
-          const distance = Math.sqrt(
-            Math.pow(point.x - prevPoint.x, 2) +
-              Math.pow(point.y - prevPoint.y, 2)
-          );
-          const steps = Math.max(3, Math.floor(distance / (brushSize / 2)));
-          for (let i = 0; i <= steps; i++) {
-            const t = i / steps;
-            const x = prevPoint.x + (point.x - prevPoint.x) * t;
-            const y = prevPoint.y + (point.y - prevPoint.y) * t;
-            drawMultiPoint({ x, y }, ctx, brushSize);
-          }
-        } else {
-          drawMultiPoint(point, ctx, brushSize);
+      const drawDot = (x: number, y: number, r: number) => {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      };
+
+      const drawLine = (
+        from: { x: number; y: number },
+        to: { x: number; y: number }
+      ) => {
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+      };
+
+      // Eraser: always simple stroke
+      if (tool === "eraser") {
+        if (prevPoint) drawLine(prevPoint, point);
+        else drawDot(point.x, point.y, ctx.lineWidth / 2);
+        return;
+      }
+
+      // Brush styles
+      switch (brushStyle) {
+        case "solid": {
+          if (prevPoint) drawLine(prevPoint, point);
+          else drawDot(point.x, point.y, ctx.lineWidth / 2);
+          break;
         }
-      } else {
-        if (prevPoint) {
-          ctx.beginPath();
-          ctx.moveTo(prevPoint.x, prevPoint.y);
-          ctx.lineTo(point.x, point.y);
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-          ctx.fill();
+
+        case "marker": {
+          ctx.globalAlpha = 0.35;
+          ctx.lineWidth = brushSize * 1.8;
+          if (prevPoint) {
+            drawLine(prevPoint, point);
+          } else {
+            drawDot(point.x, point.y, ctx.lineWidth / 2);
+          }
+          break;
+        }
+
+        case "dashed": {
+          ctx.setLineDash([brushSize * 1.5, brushSize]);
+          if (prevPoint) drawLine(prevPoint, point);
+          else drawDot(point.x, point.y, ctx.lineWidth / 2);
+          break;
+        }
+
+        case "spray": {
+          const density = 10; // dots per step
+          const radius = Math.max(2, brushSize * 0.9);
+
+          const sprayAt = (x: number, y: number) => {
+            for (let i = 0; i < density; i++) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = Math.random() * radius;
+              const px = x + Math.cos(angle) * dist;
+              const py = y + Math.sin(angle) * dist;
+              const dotR = Math.max(
+                1,
+                brushSize * (0.08 + Math.random() * 0.12)
+              );
+              drawDot(px, py, dotR);
+            }
+          };
+
+          if (prevPoint) {
+            const dx = point.x - prevPoint.x;
+            const dy = point.y - prevPoint.y;
+            const dist = Math.hypot(dx, dy);
+            const steps = Math.max(
+              3,
+              Math.floor(dist / Math.max(1, brushSize / 2))
+            );
+            for (let i = 0; i <= steps; i++) {
+              const t = i / steps;
+              const x = prevPoint.x + dx * t;
+              const y = prevPoint.y + dy * t;
+              sprayAt(x, y);
+            }
+          } else {
+            sprayAt(point.x, point.y);
+          }
+          break;
+        }
+
+        case "calligraphy": {
+          const stamp = (x: number, y: number, angle: number) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(1, 0.35);
+            drawDot(0, 0, brushSize / 2);
+            ctx.restore();
+          };
+
+          if (prevPoint) {
+            const dx = point.x - prevPoint.x;
+            const dy = point.y - prevPoint.y;
+            const angle = Math.atan2(dy, dx);
+            const dist = Math.hypot(dx, dy);
+            const steps = Math.max(
+              3,
+              Math.floor(dist / Math.max(1, brushSize / 3))
+            );
+            for (let i = 0; i <= steps; i++) {
+              const t = i / steps;
+              const x = prevPoint.x + dx * t;
+              const y = prevPoint.y + dy * t;
+              stamp(x, y, angle);
+            }
+          } else {
+            stamp(point.x, point.y, 0);
+          }
+          break;
+        }
+
+        case "neon": {
+          const neonStroke = (
+            from: { x: number; y: number },
+            to: { x: number; y: number }
+          ) => {
+            ctx.save();
+            ctx.shadowColor = brushColor;
+            ctx.shadowBlur = Math.max(6, brushSize * 1.2);
+
+            // Outer glow
+            ctx.globalAlpha = 0.45;
+            ctx.lineWidth = brushSize * 1.8;
+            drawLine(from, to);
+
+            // Bright core
+            ctx.globalAlpha = 0.95;
+            ctx.lineWidth = Math.max(1, brushSize * 0.75);
+            drawLine(from, to);
+
+            ctx.restore();
+          };
+
+          if (prevPoint) {
+            neonStroke(prevPoint, point);
+          } else {
+            ctx.save();
+            ctx.shadowColor = brushColor;
+            ctx.shadowBlur = Math.max(6, brushSize * 1.2);
+            ctx.globalAlpha = 0.95;
+            drawDot(point.x, point.y, brushSize / 2);
+            ctx.restore();
+          }
+          break;
+        }
+
+        default: {
+          if (prevPoint) drawLine(prevPoint, point);
+          else drawDot(point.x, point.y, ctx.lineWidth / 2);
+          break;
         }
       }
     },
-    [
-      tool,
-      brushSize,
-      brushColor,
-      multiPointEnabled,
-      drawMultiPoint,
-      drawingCanvasRef,
-    ]
+    [tool, brushStyle, brushSize, brushColor, drawingCanvasRef]
   );
 
   const prevPointRef = React.useRef<{ x: number; y: number } | null>(null);
@@ -453,7 +585,6 @@ export function CanvasTab(props: CanvasTabProps) {
       setDraggingClosetId?.(null);
       setDraggingPlacedId?.(null);
 
-      // If user starts drawing after undo, next saveState() will truncate redo history
       const point = getPointFromEvent(e);
       if (!point) return;
 
@@ -608,6 +739,26 @@ export function CanvasTab(props: CanvasTabProps) {
         <>
           <div className="control-card">
             <div className="card-header">
+              <span>Brush Style</span>
+              <span className="value-badge">{brushStyle}</span>
+            </div>
+
+            <select
+              className="chunky-select"
+              value={brushStyle}
+              onChange={(e) => setBrushStyle(e.target.value as BrushStyle)}
+            >
+              <option value="solid">Solid</option>
+              <option value="marker">Marker</option>
+              <option value="spray">Spray</option>
+              <option value="calligraphy">Calligraphy</option>
+              <option value="neon">Neon</option>
+              <option value="dashed">Dashed</option>
+            </select>
+          </div>
+
+          <div className="control-card">
+            <div className="card-header">
               <span>Size</span>
               <span className="value-badge">{brushSize}px</span>
             </div>
@@ -643,48 +794,6 @@ export function CanvasTab(props: CanvasTabProps) {
                 <span className="plus-icon">+</span>
               </div>
             </div>
-          </div>
-
-          <div className="control-card highlight">
-            <div className="card-header toggle-header">
-              <span>Magic Dust</span>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={multiPointEnabled}
-                  onChange={(e) => setMultiPointEnabled(e.target.checked)}
-                />
-                <span className="slider round"></span>
-              </label>
-            </div>
-            {multiPointEnabled && (
-              <div className="magic-controls">
-                <div className="mini-control">
-                  <span className="mini-label">Dots</span>
-                  <input
-                    className="chunky-slider mini"
-                    type="range"
-                    min="2"
-                    max="20"
-                    value={multiPointCount}
-                    onChange={(e) => setMultiPointCount(Number(e.target.value))}
-                  />
-                </div>
-                <div className="mini-control">
-                  <span className="mini-label">Spread</span>
-                  <input
-                    className="chunky-slider mini"
-                    type="range"
-                    min="2"
-                    max="30"
-                    value={multiPointSpread}
-                    onChange={(e) =>
-                      setMultiPointSpread(Number(e.target.value))
-                    }
-                  />
-                </div>
-              </div>
-            )}
           </div>
         </>
       )}
@@ -722,6 +831,14 @@ export function CanvasTab(props: CanvasTabProps) {
           type="button"
         >
           Redo <span className="icon">↪️</span>
+        </button>
+        <button
+          className="history-pill danger"
+          onClick={clearAllDrawing}
+          type="button"
+          title="Clear the entire drawing layer"
+        >
+          <span className="icon">🗑️</span> Clear All
         </button>
       </div>
     </>
