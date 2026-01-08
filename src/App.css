@@ -444,7 +444,6 @@ button:focus-visible {
   gap: 8px;
   transition: transform 0.1s ease, box-shadow 0.1s, background-color 0.2s;
   cursor: pointer;
-  /* Hard shadow like tools */
   box-shadow: 0 4px 0 var(--border);
 }
 .closetItem:active,
@@ -463,15 +462,14 @@ button:focus-visible {
 
 .closetPreview {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 100%;
   display: grid;
   place-items: center;
 }
-.closetPreview img,
-.closetPreview svg {
-  width: 88%;
-  height: 88%;
-  display: block;
+
+.closetPreview img {
+  aspect-ratio: 1 / 1;
+  object-fit: contain !important;
 }
 
 .closetLabel {

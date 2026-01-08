@@ -54,7 +54,6 @@ export function AvatarCanvas({
   size = 200,
   offsetY = 0,
   placed,
-  freelyDraggable = false,
   setPlaced,
   setDraggingPlacedId,
   setIsHoveringTrash,

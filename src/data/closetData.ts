@@ -15,16 +15,16 @@ export const SNAP_CONFIG: Record<
   ClosetItemType,
   { x: number; y: number; size: number }
 > = {
-  hair: { x: 0.5, y: 0.34, size: 500 },
-  eyes: { x: 0.5, y: 0.3, size: 250 },
-  hat: { x: 0.5, y: 0.05, size: 100 },
+  hair: { x: 0.5, y: 1.22, size: 1950 },
+  eyes: { x: 0.5, y: 1.14, size: 1800 },
+  hat: { x: 0.495, y: 1.13, size: 1750 },
   glasses: { x: 0.5, y: 0.22, size: 100 },
-  shirt: { x: 0.5, y: 1, size: 1200 },
+  shirt: { x: 0.5, y: 1.245, size: 2000 },
   jacket: { x: 0.5, y: 0.38, size: 100 },
   trousers: { x: 0.5, y: 0.6, size: 100 },
   pants: { x: 0.5, y: 0.6, size: 100 },
   shoes: { x: 0.5, y: 0.88, size: 100 },
-  accessory: { x: 0.5, y: 0.5, size: 100 },
+  accessory: { x: 0.5, y: 0.5, size: 400 },
   body: { x: 0, y: 0, size: 100 },
 };
 
@@ -37,7 +37,7 @@ export const CLOSET_DATA_BY_TAB: Record<TabKey, ClosetItem[]> = {
   // If these files still include `tab`, either update them to ClosetItemDefinition[] too,
   // or keep the cast until you migrate them.
   outfit: withTab(outfitClosetData as any, "outfit"),
-  accessories: withTab(accessoriesClosetData, "accessories"),
+  accessories: withTab(accessoriesClosetData as any, "accessories"),
   canvas: withTab(canvasClosetData as any, "canvas"),
   background: withTab(backgroundClosetData as any, "background"),
 };

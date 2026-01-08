@@ -1,5 +1,12 @@
 // avatarstudio.tsx
-import React, { type JSX } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   ClosetItem,
   Gender,
@@ -15,6 +22,8 @@ import { CanvasTab } from "./CanvasTab";
 import { BackgroundTab } from "./BackgroundTab";
 import { exportCanvasToImage, downloadImage } from "../utils/exportCanvas";
 
+// --- Constants ---
+
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 800;
 const CANVAS_ASPECT = CANVAS_WIDTH / CANVAS_HEIGHT;
@@ -27,15 +36,10 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
   { key: "canvas", label: "Canvas", number: 5 },
 ];
 
-// Deprecated: snapItems is now defined per item in data files
-// Keeping as fallback default for tab-level behavior
-const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
-  body: { snapItems: true },
-  outfit: { snapItems: true },
-  background: { snapItems: true },
-  accessories: { snapItems: false },
-  canvas: { snapItems: true },
-};
+// Tabs where items should float freely by default (no snap)
+const FREE_FLOAT_TABS = new Set<TabKey>(["accessories", "canvas"]);
+
+// --- Types ---
 
 export type ResolvedClosetItem = ClosetItem & {
   type: ClosetItemType;
@@ -50,13 +54,15 @@ type SnapPlacedItem = PlacedItem & {
   sizeNorm?: number;
 };
 
+// --- Helpers ---
+
 function resolveClosetItem(item: ClosetItem): ResolvedClosetItem | null {
-  // ✅ Support background items with no type (images or gradients)
+  // Handle background items (which might lack a type)
   if (item.tab === "background" && !item.type) {
     return {
       ...item,
-      type: "body", // default type to satisfy typing / snap config access
-      size: CANVAS_WIDTH, // fill canvas width
+      type: "body", // fallback type for typing satisfaction
+      size: CANVAS_WIDTH,
     };
   }
 
@@ -66,7 +72,7 @@ function resolveClosetItem(item: ClosetItem): ResolvedClosetItem | null {
   return {
     ...item,
     type: item.type,
-    size: cfg.size,
+    size: cfg?.size ?? CANVAS_WIDTH, // Safe fallback
   };
 }
 
@@ -74,14 +80,13 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-// Default background on first load (white)
 const DEFAULT_BG: SnapPlacedItem = {
   id: "bg-white",
   name: "Background white",
   tab: "background",
   instanceId: "default-bg",
   src: "",
-  type: "body", // keep as-is to satisfy existing PlacedItem typing in your app
+  type: "body",
   x: CANVAS_WIDTH / 2,
   y: CANVAS_HEIGHT / 2,
   z: 0,
@@ -92,73 +97,55 @@ const DEFAULT_BG: SnapPlacedItem = {
   color: "#ffffff",
 };
 
+// --- Main Component ---
+
 export function AvatarStudio() {
-  const [gender, setGender] = React.useState<Gender>("male");
-  const [tab, setTab] = React.useState<TabKey>("body");
+  // Global State
+  const [gender, setGender] = useState<Gender>("male");
+  const [tab, setTab] = useState<TabKey>("body");
+  const [placed, setPlaced] = useState<SnapPlacedItem[]>([DEFAULT_BG]);
+  const [topZ, setTopZ] = useState(1);
 
-  // ✅ Start with a white background already placed (so you see it on page entry)
-  const [placed, setPlaced] = React.useState<SnapPlacedItem[]>(() => [
-    DEFAULT_BG,
-  ]);
+  // Dragging State
+  const [draggingClosetId, setDraggingClosetId] = useState<string | null>(null);
+  const [draggingPlacedId, setDraggingPlacedId] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const draggingClosetIdRef = useRef<string | null>(null);
+  const [isHoveringTrash, setIsHoveringTrash] = useState(false);
 
-  const [topZ, setTopZ] = React.useState(1);
-
-  const [draggingClosetId, setDraggingClosetId] = React.useState<string | null>(
-    null
-  );
-  const [dragPos, setDragPos] = React.useState<{ x: number; y: number } | null>(
-    null
-  );
-  const draggingClosetIdRef = React.useRef<string | null>(null);
-
-  const [isHoveringTrash, setIsHoveringTrash] = React.useState(false);
-  const [draggingPlacedId, setDraggingPlacedId] = React.useState<string | null>(
-    null
-  );
-
-  const [canvasSize, setCanvasSize] = React.useState({
+  // Canvas / Viewport State
+  const [canvasSize, setCanvasSize] = useState({
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
   });
+  const prevCanvasSizeRef = useRef(canvasSize);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
 
-  const prevCanvasSizeRef = React.useRef(canvasSize);
+  // Drawing / Preview State
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const drawingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingHistoryRef = useRef<string[]>([]);
+  const drawingHistoryIndexRef = useRef<number>(-1);
 
-  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+  // --- Resize Logic ---
 
-  // Refs for export and persistence
-  const canvasRef = React.useRef<HTMLDivElement | null>(null);
-  const drawingCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
-
-  // --- History Persistence ---
-  // Store as PNG data URLs (resilient to resize + easy to persist)
-  const drawingHistoryRef = React.useRef<string[]>([]);
-  const drawingHistoryIndexRef = React.useRef<number>(-1);
-
-  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
-
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     const MARGIN = 48;
     const HEADER_RESERVE = 220;
 
-    const getViewport = () => {
-      const vv = window.visualViewport;
-      return {
-        width: vv?.width ?? window.innerWidth,
-        height: vv?.height ?? window.innerHeight,
-      };
-    };
-
     const updateSize = () => {
-      const vp = getViewport();
+      const vv = window.visualViewport;
+      const vpW = vv?.width ?? window.innerWidth;
+      const vpH = vv?.height ?? window.innerHeight;
 
-      const maxWidth = Math.max(320, vp.width - MARGIN * 2);
-      const maxHeight = Math.max(320, vp.height - HEADER_RESERVE - MARGIN * 2);
+      const maxWidth = Math.max(320, vpW - MARGIN * 2);
+      const maxHeight = Math.max(320, vpH - HEADER_RESERVE - MARGIN * 2);
 
       const widthByHeight = maxHeight * CANVAS_ASPECT;
-      const heightByWidth = maxWidth / CANVAS_ASPECT;
 
       let width = maxWidth;
-      let height = heightByWidth;
+      let height = maxWidth / CANVAS_ASPECT;
 
       if (widthByHeight <= maxWidth) {
         width = widthByHeight;
@@ -173,6 +160,7 @@ export function AvatarStudio() {
 
     updateSize();
 
+    // Attach listeners
     const vv = window.visualViewport;
     window.addEventListener("resize", updateSize);
     vv?.addEventListener("resize", updateSize);
@@ -185,14 +173,16 @@ export function AvatarStudio() {
     };
   }, []);
 
-  React.useEffect(() => {
+  // --- Normalization Logic (On Resize) ---
+
+  useEffect(() => {
     const prev = prevCanvasSizeRef.current;
     const prevW = prev.width || 1;
     const prevH = prev.height || 1;
 
     setPlaced((current) =>
       current.map((p) => {
-        // ✅ Keep the background always covering the canvas after resizes
+        // Always center and fill background
         if (p.tab === "background") {
           return {
             ...p,
@@ -210,6 +200,7 @@ export function AvatarStudio() {
           return { ...p, size: canvasSize.width, x: 0, y: 0 };
         }
 
+        // Calculate normalized values if missing, or use existing to scale to new px
         const baseSizeFromType =
           p.type && SNAP_CONFIG[p.type] ? SNAP_CONFIG[p.type].size : undefined;
 
@@ -217,25 +208,19 @@ export function AvatarStudio() {
           p.sizeNorm ??
           (typeof baseSizeFromType === "number"
             ? baseSizeFromType / CANVAS_WIDTH
-            : p.size
-            ? p.size / prevW
-            : 0);
+            : (p.size ?? 0) / prevW);
 
         const xNorm = p.xNorm ?? (p.x ?? 0) / prevW;
         const yNorm = p.yNorm ?? (p.y ?? 0) / prevH;
-
-        const sizePx = sizeNorm * canvasSize.width;
-        const xPx = xNorm * canvasSize.width;
-        const yPx = yNorm * canvasSize.height;
 
         return {
           ...p,
           sizeNorm,
           xNorm,
           yNorm,
-          size: sizePx,
-          x: xPx,
-          y: yPx,
+          size: sizeNorm * canvasSize.width,
+          x: xNorm * canvasSize.width,
+          y: yNorm * canvasSize.height,
         };
       })
     );
@@ -243,33 +228,27 @@ export function AvatarStudio() {
     prevCanvasSizeRef.current = canvasSize;
   }, [canvasSize.width, canvasSize.height]);
 
-  React.useEffect(() => {
+  // --- Drag Event Listeners ---
+
+  useEffect(() => {
     draggingClosetIdRef.current = draggingClosetId;
   }, [draggingClosetId]);
 
-  const lastDropRef = React.useRef<{ key: string; t: number } | null>(null);
-  const shouldAcceptDrop = (key: string) => {
-    const now = performance.now();
-    const last = lastDropRef.current;
-    if (last && last.key === key && now - last.t < 500) {
-      return false;
-    }
-    lastDropRef.current = { key, t: now };
-    return true;
-  };
-
-  React.useEffect(() => {
+  useEffect(() => {
     const onDocDragOver = (e: DragEvent) => {
       e.preventDefault();
       if (!draggingClosetIdRef.current) return;
       if (e.clientX === 0 && e.clientY === 0) return;
       setDragPos({ x: e.clientX, y: e.clientY });
     };
+
     const clear = () => {
       setDraggingClosetId(null);
+      setDraggingPlacedId(null);
       setDragPos(null);
       setIsHoveringTrash(false);
     };
+
     document.addEventListener("dragover", onDocDragOver);
     document.addEventListener("dragend", clear);
     document.addEventListener("drop", clear);
@@ -280,164 +259,164 @@ export function AvatarStudio() {
     };
   }, []);
 
-  // Tab-level snapItems (fallback for UI behavior, e.g., showTrash)
-  // Individual items can override this via their snapItems field
-  const { snapItems: tabSnapItems } = TAB_BEHAVIORS[tab];
-  const showTrash = !tabSnapItems;
+  // --- Placement Logic ---
 
-  const isPlacingItemRef = React.useRef(false);
+  const isPlacingItemRef = useRef(false);
+  const lastDropRef = useRef<{ key: string; t: number } | null>(null);
 
   const getCanvasLocalDropPoint = (dropX: number, dropY: number) => {
     const el = canvasRef.current;
     if (!el) return { x: dropX, y: dropY };
 
     const rect = el.getBoundingClientRect();
-
-    // Heuristic:
-    // - If (dropX, dropY) are within the rect in viewport space, treat them as viewport coords.
-    // - Otherwise, assume caller already passed canvas-local coords.
-    const looksViewport =
+    const isViewportCoord =
       dropX >= rect.left &&
       dropX <= rect.right &&
       dropY >= rect.top &&
       dropY <= rect.bottom;
 
-    if (looksViewport) {
+    if (isViewportCoord) {
       return { x: dropX - rect.left, y: dropY - rect.top };
     }
-
     return { x: dropX, y: dropY };
   };
 
-  const placeClosetItem = (
-    closetId: string,
-    targetTab: TabKey,
-    dropX?: number,
-    dropY?: number
-  ) => {
-    if (isPlacingItemRef.current) return;
+  const placeClosetItem = useCallback(
+    (closetId: string, targetTab: TabKey, dropX?: number, dropY?: number) => {
+      if (isPlacingItemRef.current) return;
 
-    const tabItems = CLOSET_DATA_BY_TAB[targetTab] || [];
-    const rawItem = tabItems.find((c) => c.id === closetId);
-    if (!rawItem) return;
+      const tabItems = CLOSET_DATA_BY_TAB[targetTab] || [];
+      const rawItem = tabItems.find((c) => c.id === closetId);
+      if (!rawItem) return;
 
-    const item = resolveClosetItem(rawItem);
-    if (!item) return;
+      const item = resolveClosetItem(rawItem);
+      if (!item) return;
 
-    // ✅ Read snapItems from item data, fallback to tab default
-    const itemSnapItems =
-      rawItem.snapItems ?? item.snapItems ?? TAB_BEHAVIORS[targetTab].snapItems;
+      // Determine Snap Behavior
+      // 1. Explicit item prop? 2. Tab default?
+      const defaultSnapForTab = !FREE_FLOAT_TABS.has(targetTab);
+      const itemSnapItems =
+        rawItem.snapItems ?? item.snapItems ?? defaultSnapForTab;
 
-    const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
-    const ry = typeof dropY === "number" ? Math.round(dropY) : -1;
-    const dedupeKey = `${targetTab}:${closetId}:${
-      itemSnapItems ? "snap" : "free"
-    }:${rx},${ry}`;
-    if (!shouldAcceptDrop(dedupeKey)) return;
+      // Debounce Drop
+      const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
+      const ry = typeof dropY === "number" ? Math.round(dropY) : -1;
+      const dedupeKey = `${targetTab}:${closetId}:${itemSnapItems}:${rx},${ry}`;
 
-    isPlacingItemRef.current = true;
+      const now = performance.now();
+      const last = lastDropRef.current;
+      if (last && last.key === dedupeKey && now - last.t < 500) return;
+      lastDropRef.current = { key: dedupeKey, t: now };
 
-    const resolveSnapAnchor = (cfg: { x: number; y: number }) => ({
-      x: cfg.x === 0 ? 0.5 : cfg.x,
-      y: cfg.y === 0 ? 0.5 : cfg.y,
-    });
+      isPlacingItemRef.current = true;
 
-    // IMPORTANT: normalize against the fixed design canvas (800),
-    // not the current CSS pixel size (canvasSize.width), so zoom doesn't change sizes.
-    let sizeNorm = item.size / CANVAS_WIDTH;
+      // Placement Calculation
+      const isBackground = targetTab === "background";
 
-    // ✅ Background always fills the whole canvas
-    if (targetTab === "background") {
-      sizeNorm = 1.0;
-    }
+      // Normalized Size
+      // If background, scale is 1.0 (100%). Else relative to Design Canvas.
+      const sizeNorm = isBackground ? 1.0 : item.size / CANVAS_WIDTH;
 
-    let xNorm: number;
-    let yNorm: number;
-    let snapAnchor: { x: number; y: number } | undefined;
+      let xNorm: number;
+      let yNorm: number;
+      let snapAnchor: { x: number; y: number } | undefined;
 
-    if (!itemSnapItems && typeof dropX === "number" && typeof dropY === "number") {
-      const local = getCanvasLocalDropPoint(dropX, dropY);
+      if (isBackground) {
+        // Force Center
+        snapAnchor = { x: 0.5, y: 0.5 };
+        xNorm = 0.5 - sizeNorm / 2;
+        yNorm = 0.5 - sizeNorm / 2;
+      } else if (
+        !itemSnapItems &&
+        typeof dropX === "number" &&
+        typeof dropY === "number"
+      ) {
+        // Free Placement
+        const local = getCanvasLocalDropPoint(dropX, dropY);
+        const rect = canvasRef.current?.getBoundingClientRect();
+        const w = rect?.width ?? canvasSize.width;
+        const h = rect?.height ?? canvasSize.height;
 
-      const rect = canvasRef.current?.getBoundingClientRect();
-      const w = rect?.width ?? canvasSize.width;
-      const h = rect?.height ?? canvasSize.height;
+        const x01 = clamp(local.x / (w || 1), 0, 1);
+        const y01 = clamp(local.y / (h || 1), 0, 1);
 
-      const x01 = clamp(local.x / (w || 1), 0, 1);
-      const y01 = clamp(local.y / (h || 1), 0, 1);
+        xNorm = x01 - sizeNorm / 2;
+        yNorm = y01 - sizeNorm / 2;
+      } else {
+        // Snapped Placement
+        const cfg = SNAP_CONFIG[item.type] ?? {
+          x: 0.5,
+          y: 0.5,
+          size: item.size,
+        };
+        snapAnchor = {
+          x: cfg.x === 0 ? 0.5 : cfg.x,
+          y: cfg.y === 0 ? 0.5 : cfg.y,
+        };
+        xNorm = snapAnchor.x - sizeNorm / 2;
+        yNorm = snapAnchor.y - sizeNorm / 2;
+      }
 
-      xNorm = x01 - sizeNorm / 2;
-      yNorm = y01 - sizeNorm / 2;
-    } else {
-      const cfg = SNAP_CONFIG[item.type] ?? { x: 0.5, y: 0.5, size: item.size };
-      snapAnchor = resolveSnapAnchor({ x: cfg.x, y: cfg.y });
-      xNorm = snapAnchor.x - sizeNorm / 2;
-      yNorm = snapAnchor.y - sizeNorm / 2;
-    }
+      const x = xNorm * canvasSize.width;
+      const y = yNorm * canvasSize.height;
+      const sizePx = sizeNorm * canvasSize.width;
 
-    // ✅ Background override: fill + center
-    if (targetTab === "background") {
-      snapAnchor = { x: 0.5, y: 0.5 };
-      xNorm = 0.5 - sizeNorm / 2;
-      yNorm = 0.5 - sizeNorm / 2;
-    }
+      setTopZ((z) => {
+        const newZ = z + 1;
+        setPlaced((current) => {
+          // Prevent exact duplicates
+          const existingInstance = current.find(
+            (p) =>
+              p.id === closetId &&
+              Math.abs((p.xNorm ?? 0) - xNorm) < 0.001 &&
+              Math.abs((p.yNorm ?? 0) - yNorm) < 0.001
+          );
 
-    const x = xNorm * canvasSize.width;
-    const y = yNorm * canvasSize.height;
-    const sizePx = sizeNorm * canvasSize.width;
+          if (existingInstance) {
+            isPlacingItemRef.current = false;
+            return current;
+          }
 
-    setTopZ((z) => {
-      const newZ = z + 1;
-      setPlaced((current) => {
-        const existingInstance = current.find(
-          (p) =>
-            p.id === closetId &&
-            Math.abs((p.xNorm ?? 0) - xNorm) < 0.001 &&
-            Math.abs((p.yNorm ?? 0) - yNorm) < 0.001
-        );
-        if (existingInstance) {
-          isPlacingItemRef.current = false;
-          return current;
-        }
+          let filtered = current;
 
-        let filtered = current;
+          // Cleanup before adding
+          if (isBackground) {
+            filtered = filtered.filter((p) => p.tab !== "background");
+          } else if (itemSnapItems) {
+            // Replace items of same type if snapping is enabled for this item
+            filtered = filtered.filter((p) => p.type !== item.type);
+          }
 
-        // ✅ Background replacement: keep only one background at a time
-        if (targetTab === "background") {
-          filtered = filtered.filter((p) => p.tab !== "background");
-        } else if (itemSnapItems) {
-          // If item uses snap, replace items of the same type
-          filtered = filtered.filter((p) => p.type !== item.type);
-        }
+          setTimeout(() => {
+            isPlacingItemRef.current = false;
+          }, 100);
 
-        const newInstanceId = crypto.randomUUID();
-
-        setTimeout(() => {
-          isPlacingItemRef.current = false;
-        }, 100);
-
-        return [
-          ...filtered,
-          {
-            ...item,
-            instanceId: newInstanceId,
-            // For background items, x/y are not used for rendering (they're applied via CSS),
-            // but keep them consistent for any export/debug logic.
-            x: targetTab === "background" ? canvasSize.width / 2 : x,
-            y: targetTab === "background" ? canvasSize.height / 2 : y,
-            size: targetTab === "background" ? canvasSize.width : sizePx,
-            z: targetTab === "background" ? 0 : newZ,
-            snapItems: itemSnapItems, // ✅ Explicitly set snapItems so it's available on the placed item
-            isSnapped: itemSnapItems,
-            snapAnchor,
-            xNorm,
-            yNorm,
-            sizeNorm,
-          },
-        ];
+          return [
+            ...filtered,
+            {
+              ...item,
+              instanceId: crypto.randomUUID(),
+              // For background, x/y are forced to center for logic consistency
+              x: isBackground ? canvasSize.width / 2 : x,
+              y: isBackground ? canvasSize.height / 2 : y,
+              size: isBackground ? canvasSize.width : sizePx,
+              z: isBackground ? 0 : newZ,
+              snapItems: itemSnapItems,
+              isSnapped: itemSnapItems,
+              snapAnchor,
+              xNorm,
+              yNorm,
+              sizeNorm,
+            },
+          ];
+        });
+        return newZ;
       });
-      return newZ;
-    });
-  };
+    },
+    [canvasSize.width, canvasSize.height]
+  );
+
+  // --- Deletion Logic ---
 
   const removePlacedByInstanceId = (instanceId: string) => {
     setPlaced((current) =>
@@ -449,15 +428,87 @@ export function AvatarStudio() {
     setPlaced((current) => current.filter((item) => item.id !== closetId));
   };
 
+  const handleTrashDrop = () => {
+    if (draggingPlacedId) {
+      removePlacedByInstanceId(draggingPlacedId);
+      setDraggingPlacedId(null);
+    }
+    if (draggingClosetId) {
+      removePlacedByClosetId(draggingClosetId);
+      setDraggingClosetId(null);
+      setDragPos(null);
+    }
+    setIsHoveringTrash(false);
+  };
+
+  // --- Export / Output ---
+
+  const handleExportCanvas = async (): Promise<string | null> => {
+    const hasBackground = placed.some((p) => p.tab === "background");
+    return await exportCanvasToImage({
+      avatarCanvasElement: canvasRef.current,
+      drawingCanvasElement: drawingCanvasRef.current,
+      scale: 2,
+      backgroundColor: hasBackground ? null : "#ffffff",
+    });
+  };
+
+  const handleShare = async () => {
+    const dataUrl = await handleExportCanvas();
+    if (!dataUrl) return window.alert("Failed to generate image.");
+
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `avatar-${Date.now()}.png`, {
+      type: "image/png",
+    });
+
+    // Try Native Share with Files
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: "My Avatar", files: [file] });
+        return;
+      } catch (err: any) {
+        if (err.name !== "AbortError") console.warn("Share failed:", err);
+      }
+    }
+
+    // Try Clipboard
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      window.alert("Image copied to clipboard!");
+    } catch (err) {
+      downloadImage(dataUrl); // Fallback
+    }
+  };
+
+  const handleDownload = async () => {
+    const dataUrl = await handleExportCanvas();
+    if (dataUrl) downloadImage(dataUrl);
+  };
+
+  const handlePreviewOpen = async () => {
+    setIsPreviewOpen(true);
+    setPreviewImage(await handleExportCanvas());
+  };
+
+  // --- Render Prep ---
+
   const filteredCloset = CLOSET_DATA_BY_TAB[tab] || [];
 
+  // Determine Ghost Image
   const previewRawItem = draggingClosetId
     ? Object.values(CLOSET_DATA_BY_TAB)
         .flat()
         .find((c) => c.id === draggingClosetId) ?? null
     : null;
-
   const previewItem = previewRawItem ? resolveClosetItem(previewRawItem) : null;
+
+  // Determine UI State
+  const snapItemsForTab = !FREE_FLOAT_TABS.has(tab);
+  const showTrash = !snapItemsForTab; // Show trash if we are in free-float mode
+  const showTrashCan = showTrash && (!!draggingClosetId || !!draggingPlacedId);
 
   const sharedTabProps = {
     gender,
@@ -475,7 +526,7 @@ export function AvatarStudio() {
     canvasWidth: canvasSize.width,
     canvasHeight: canvasSize.height,
     placeClosetItem,
-    snapItems: tabSnapItems,
+    snapItems: snapItemsForTab,
     showTrash,
     removePlacedByClosetId,
     setIsHoveringTrash,
@@ -486,152 +537,13 @@ export function AvatarStudio() {
     canvasRef,
   } as const;
 
-  let TabContent: JSX.Element | null = null;
-  switch (tab) {
-    case "body":
-      TabContent = <BodyTab {...sharedTabProps} />;
-      break;
-    case "outfit":
-      TabContent = <OutfitTab {...sharedTabProps} />;
-      break;
-    case "background":
-      TabContent = <BackgroundTab {...sharedTabProps} />;
-      break;
-    case "accessories":
-      TabContent = <AccessoriesTab {...sharedTabProps} />;
-      break;
-    case "canvas":
-      TabContent = (
-        <CanvasTab
-          {...sharedTabProps}
-          avatarCanvasRef={canvasRef}
-          drawingCanvasRef={drawingCanvasRef}
-          drawingHistoryRef={drawingHistoryRef}
-          drawingHistoryIndexRef={drawingHistoryIndexRef}
-        />
-      );
-      break;
-    default:
-      TabContent = null;
-  }
-
-  const showTrashCan = showTrash && (draggingClosetId || draggingPlacedId);
-
-  const handleTrashDrop = () => {
-    if (draggingPlacedId) {
-      removePlacedByInstanceId(draggingPlacedId);
-      setDraggingPlacedId(null);
-      setIsHoveringTrash(false);
-    }
-    if (draggingClosetId) {
-      removePlacedByClosetId(draggingClosetId);
-      setDraggingClosetId(null);
-      setDragPos(null);
-      setIsHoveringTrash(false);
-    }
-  };
-
   const totalTabs = TABS.length;
-  const selectedTabNumber =
-    TABS.find((t) => t.key === tab)?.number ?? Math.max(1, totalTabs);
+  const selectedTabNumber = TABS.find((t) => t.key === tab)?.number ?? 1;
   const progressPercent = (selectedTabNumber / totalTabs) * 100;
-
-  const tabProgressStyle = React.useMemo(
+  const tabProgressStyle = useMemo(
     () => ({ "--tab-progress": `${progressPercent}%` } as React.CSSProperties),
     [progressPercent]
   );
-
-  const handleExportCanvas = async (): Promise<string | null> => {
-    // ✅ If a background exists in DOM, let it render naturally into the export.
-    // ✅ If it doesn't exist (e.g., user deleted it), fallback to white.
-    const hasBackground = placed.some((p) => p.tab === "background");
-
-    return await exportCanvasToImage({
-      avatarCanvasElement: canvasRef.current,
-      drawingCanvasElement: drawingCanvasRef.current,
-      scale: 2,
-      backgroundColor: hasBackground ? null : "#ffffff",
-    });
-  };
-
-  const handleShare = async () => {
-    const dataUrl = await handleExportCanvas();
-    if (!dataUrl) {
-      window.alert("Failed to generate image. Please try again.");
-      return;
-    }
-
-    const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], `avatar-${Date.now()}.png`, {
-      type: "image/png",
-    });
-
-    if (
-      navigator.share &&
-      navigator.canShare &&
-      navigator.canShare({ files: [file] })
-    ) {
-      try {
-        await navigator.share({
-          title: "My Avatar",
-          text: "Check out my avatar creation!",
-          files: [file],
-        });
-        return;
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.warn("Share failed:", err);
-        } else {
-          return;
-        }
-      }
-    }
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "My Avatar",
-          text: "Check out my avatar creation!",
-        });
-        return;
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.warn("Share failed:", err);
-        } else {
-          return;
-        }
-      }
-    }
-
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "image/png": blob,
-        }),
-      ]);
-      window.alert("Image copied to clipboard! You can paste it elsewhere.");
-    } catch (clipboardErr) {
-      console.error("Clipboard copy failed:", clipboardErr);
-      window.alert(
-        "Could not share automatically. Please download the image and share manually."
-      );
-    }
-  };
-
-  const handleDownload = async () => {
-    const dataUrl = await handleExportCanvas();
-    if (!dataUrl) {
-      window.alert("Export failed, please try again.");
-      return;
-    }
-    downloadImage(dataUrl);
-  };
-
-  const handlePreviewOpen = async () => {
-    setIsPreviewOpen(true);
-    const dataUrl = await handleExportCanvas();
-    setPreviewImage(dataUrl);
-  };
 
   return (
     <div className="studio">
@@ -663,19 +575,27 @@ export function AvatarStudio() {
           </button>
         </div>
 
-        {TabContent}
-
-        <DragGhost item={previewItem} pos={dragPos} />
-
-        {showTrashCan && (
-          <TrashCan
-            visible
-            isHover={isHoveringTrash}
-            setIsHoveringTrash={setIsHoveringTrash}
-            onDrop={handleTrashDrop}
+        {tab === "body" && <BodyTab {...sharedTabProps} />}
+        {tab === "outfit" && <OutfitTab {...sharedTabProps} />}
+        {tab === "background" && <BackgroundTab {...sharedTabProps} />}
+        {tab === "accessories" && <AccessoriesTab {...sharedTabProps} />}
+        {tab === "canvas" && (
+          <CanvasTab
+            {...sharedTabProps}
+            avatarCanvasRef={canvasRef}
+            drawingCanvasRef={drawingCanvasRef}
+            drawingHistoryRef={drawingHistoryRef}
+            drawingHistoryIndexRef={drawingHistoryIndexRef}
           />
         )}
 
+        <DragGhost item={previewItem} pos={dragPos} />
+        <TrashCan
+          visible={showTrashCan}
+          isHover={isHoveringTrash}
+          setIsHoveringTrash={setIsHoveringTrash}
+          onDrop={handleTrashDrop}
+        />
         {isPreviewOpen && (
           <SavePreviewModal
             onClose={() => {
@@ -691,6 +611,8 @@ export function AvatarStudio() {
     </div>
   );
 }
+
+// --- Sub Components ---
 
 function SavePreviewModal({
   onClose,
@@ -723,12 +645,7 @@ function SavePreviewModal({
               <img
                 src={previewImage}
                 alt="Avatar Preview"
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  maxWidth: "100%",
-                  display: "block",
-                }}
+                style={{ width: "100%", height: "auto", display: "block" }}
               />
             ) : (
               <p className="previewHint">Generating preview...</p>
@@ -772,7 +689,7 @@ function DragGhost({
       style={{
         left: pos.x,
         top: pos.y,
-        width: 200,
+        width: 200, // Fixed width for drag preview
         position: "fixed",
         pointerEvents: "none",
         zIndex: 99999,
@@ -827,7 +744,6 @@ function TrashCan({
       onDragLeave={() => setIsHoveringTrash(false)}
       onDrop={(e) => {
         e.preventDefault();
-        setIsHoveringTrash(false);
         onDrop();
       }}
     >

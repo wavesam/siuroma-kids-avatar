@@ -29,6 +29,10 @@ import veterinarianM from "../assets/shared/accessories/veterinarian/veterinaria
 import veterinarianW from "../assets/shared/accessories/veterinarian/veterinarian_w.png";
 import youtuberM from "../assets/shared/accessories/social_media/youtuber_m.png";
 import youtuberW from "../assets/shared/accessories/social_media/youtuber_w.png";
+import eyesM from "../assets/boys only/body/boy_eyes_black_cropped.png";
+import hairM from "../assets/boys only/body/boy hair 1 cropped.png";
+import eyesW from "../assets/girls only/body/girl_eyes_brown_cropped.png";
+import hairW from "../assets/girls only/body/girl hair 1 cropped.png";
 
 /**
  * Occupation cover image mappings
@@ -52,7 +56,8 @@ export const OCCUPATION_COVER_IMAGES: Record<
   teacher: { male: teacherM, female: teacherW },
   veterinarian: { male: veterinarianM, female: veterinarianW },
   youtuber: { male: youtuberM, female: youtuberW },
-  // singer uses outfit data, not accessories, so no cover image needed
+  eyes: { male: eyesM, female: eyesW },
+  hair: { male: hairM, female: hairW },
 };
 
 /**

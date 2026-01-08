@@ -57,19 +57,6 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
 
   const filteredCloset = closet.filter((item) => item.tab === "accessories");
 
-  // Extract unique occupations from accessories items
-  const occupationOptions = [
-    ...Array.from(
-      new Set(
-        filteredCloset
-          .map((item) => item.occupation)
-          .filter((occ): occ is string => !!occ)
-      )
-    ),
-  ];
-
-  const hasOccupation = occupationOptions.length > 0;
-
   return (
     <div className="studioBody">
       <div
@@ -87,6 +74,7 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
           tab={tab}
           placed={placed}
           setPlaced={setPlaced}
+          freelyDraggable={!snapItems}
           setDraggingPlacedId={setDraggingPlacedId}
           setIsHoveringTrash={setIsHoveringTrash}
           isHoveringTrash={isHoveringTrash}
@@ -116,8 +104,6 @@ export function AccessoriesTab(props: AccessoriesTabProps) {
             setDraggingClosetId(null);
             setDragPos(null);
           }}
-          filterOptions={hasOccupation ? occupationOptions : undefined}
-          filterByOccupation={hasOccupation}
         />
       </div>
     </div>

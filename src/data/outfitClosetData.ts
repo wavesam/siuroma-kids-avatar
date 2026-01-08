@@ -1,20 +1,20 @@
 import type { ClosetItem } from "../types";
 
 // Boys Only Imports
-import boySinger from "../assets/boys only/outfit/singer_m.png";
-import boyYoutuber from "../assets/boys only/outfit/youtuber_男.png";
-import boyYoutuberHeadphone from "../assets/boys only/outfit/youtuber_男_headphone.png";
-import boyFashionDesigner from "../assets/boys only/outfit/服裝設計師_男.png";
-import boyTeacher from "../assets/boys only/outfit/老師_男.png";
-import boyPilot from "../assets/boys only/outfit/飛機師_男.png";
+import boySinger from "../assets/boys only/outfit/singer_clothes_b.png";
+import boyYoutuber from "../assets/boys only/outfit/youtuber_clothes_b.png";
+import boyYoutuberHeadphone from "../assets/boys only/outfit/youtuber_headphones_b.png";
+import boyFashionDesigner from "../assets/boys only/outfit/fashion_designer_clothes_b.png";
+import boyTeacher from "../assets/boys only/outfit/teacher_clothes_b.png";
+import boyPilot from "../assets/boys only/outfit/pilot_clothes_b.png";
 
 // Girls Only Imports
-import girlSinger from "../assets/girls only/outfit/singer_w.png";
-import girlYoutuber from "../assets/girls only/outfit/youtuber_女.png";
-import girlYoutuberHeadphone from "../assets/girls only/outfit/youtuber_女_headphone.png";
-import girlFashionDesigner from "../assets/girls only/outfit/服裝設計師_女.png";
-import girlTeacher from "../assets/girls only/outfit/老師_女.png";
-import girlPilot from "../assets/girls only/outfit/飛機師_女.png";
+import girlSinger from "../assets/girls only/outfit/singer_clothes_g.png";
+import girlYoutuber from "../assets/girls only/outfit/youtuber_clothes_g.png";
+import girlYoutuberHeadphone from "../assets/girls only/outfit/youtuber_headphones_g.png";
+import girlFashionDesigner from "../assets/girls only/outfit/fashion_designer_clothes_g.png";
+import girlTeacher from "../assets/girls only/outfit/teacher_clothes_g.png";
+import girlPilot from "../assets/girls only/outfit/pilot_clothes_g.png";
 
 export const outfitClosetData: ClosetItem[] = [
   // Boys Outfits
@@ -25,7 +25,7 @@ export const outfitClosetData: ClosetItem[] = [
     src: boySinger,
     gender: "male",
     tab: "outfit",
-    occupation: "singer",
+    occupation: "musician",
   },
   {
     id: "boyYoutuber",
@@ -66,7 +66,7 @@ export const outfitClosetData: ClosetItem[] = [
   {
     id: "boyPilot",
     name: "Pilot (Male)",
-    type: "jacket",
+    type: "shirt",
     src: boyPilot,
     gender: "male",
     tab: "outfit",
@@ -80,7 +80,7 @@ export const outfitClosetData: ClosetItem[] = [
     src: girlSinger,
     gender: "female",
     tab: "outfit",
-    occupation: "singer",
+    occupation: "musician",
   },
   {
     id: "girlYoutuber",
@@ -121,7 +121,7 @@ export const outfitClosetData: ClosetItem[] = [
   {
     id: "girlPilot",
     name: "Pilot (Female)",
-    type: "jacket",
+    type: "shirt",
     src: girlPilot,
     gender: "female",
     tab: "outfit",

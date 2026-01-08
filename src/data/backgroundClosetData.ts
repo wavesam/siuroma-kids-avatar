@@ -1,6 +1,19 @@
 import type { ClosetItem } from "../types";
 
-import bgCityPark from "../assets/backgrounds/bg-city-park.png";
+import bgLinkPurple from "../assets/backgrounds/link_purple.png";
+import byLinkYellow from "../assets/backgrounds/link_yellow.png";
+import bgPaperFrame from "../assets/backgrounds/paper_frame.png";
+import bgPaperWhite from "../assets/backgrounds/paper_white.png";
+import bgPaperYellow from "../assets/backgrounds/paper_yellow.png";
+import bgRainbow from "../assets/backgrounds/rainbow.png";
+import bgStarYellow from "../assets/backgrounds/star_yellow.png";
+import bgStar from "../assets/backgrounds/star.png";
+import bgTriangleBlue from "../assets/backgrounds/triangle_blue.png";
+import bgTriangleGreen from "../assets/backgrounds/triangle_green.png";
+import bgTriangleOrange from "../assets/backgrounds/triangle_orange.png";
+import bgTrianglePink from "../assets/backgrounds/triangle_pink.png";
+import bgTrianglePurple from "../assets/backgrounds/triangle_purple.png";
+import bgTriangleYellow from "../assets/backgrounds/triangle_yellow.png";
 
 /**
  * Background closet items
@@ -28,13 +41,118 @@ import bgCityPark from "../assets/backgrounds/bg-city-park.png";
  */
 export const backgroundClosetData: ClosetItem[] = [
   {
-    id: "bg-my-photo",
-    name: "My photo",
+    id: "bg-link-purple",
+    name: "Link Purple",
     tab: "background",
     gender: "unisex",
-    src: bgCityPark,
+    src: bgLinkPurple,
     color: "#ffffff",
   },
+  {
+    id: "bg-link-yellow",
+    name: "Link Yellow",
+    tab: "background",
+    gender: "unisex",
+    src: byLinkYellow,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-paper-frame",
+    name: "Paper Frame",
+    tab: "background",
+    gender: "unisex",
+    src: bgPaperFrame,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-paper-white",
+    name: "Paper White",
+    tab: "background",
+    gender: "unisex",
+    src: bgPaperWhite,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-paper-yellow",
+    name: "Paper Yellow",
+    tab: "background",
+    gender: "unisex",
+    src: bgPaperYellow,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-rainbow",
+    name: "Rainbow",
+    tab: "background",
+    gender: "unisex",
+    src: bgRainbow,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-star-yellow",
+    name: "Star Yellow",
+    tab: "background",
+    gender: "unisex",
+    src: bgStarYellow,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-star",
+    name: "Star",
+    tab: "background",
+    gender: "unisex",
+    src: bgStar,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-triangle-blue",
+    name: "Triangle Blue",
+    tab: "background",
+    gender: "unisex",
+    src: bgTriangleBlue,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-triangle-green",
+    name: "Triangle Green",
+    tab: "background",
+    gender: "unisex",
+    src: bgTriangleGreen,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-triangle-orange",
+    name: "Triangle Orange",
+    tab: "background",
+    gender: "unisex",
+    src: bgTriangleOrange,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-triangle-pink",
+    name: "Triangle Pink",
+    tab: "background",
+    gender: "unisex",
+    src: bgTrianglePink,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-triangle-purple",
+    name: "Triangle Purple",
+    tab: "background",
+    gender: "unisex",
+    src: bgTrianglePurple,
+    color: "#ffffff",
+  },
+  {
+    id: "bg-triangle-yellow",
+    name: "Triangle Yellow",
+    tab: "background",
+    gender: "unisex",
+    src: bgTriangleYellow,
+    color: "#ffffff",
+  },
+
   // Solid colors
   {
     id: "bg-white",

@@ -706,14 +706,6 @@ export function CanvasTab(props: CanvasTabProps) {
 
   const toolsPanel = (
     <>
-      <div className="art-tools-hero">
-        <span className="hero-icon">🎨</span>
-        <div className="hero-text">
-          <span className="hero-title">Studio Tools</span>
-          <span className="hero-subtitle">Let's create!</span>
-        </div>
-      </div>
-
       <div className="tool-selector-group">
         <button
           className={`big-tool-btn ${tool === "brush" ? "active" : ""}`}

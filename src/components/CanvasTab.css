@@ -28,48 +28,6 @@
 
 /* --- Kid Friendly Tools Styling --- */
 
-/* Hero Section */
-.art-tools-hero {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 8px;
-  border: 2px solid #f0f2f5;
-}
-
-.hero-icon {
-  font-size: 28px;
-  background: #fff0f6;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.hero-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.hero-title {
-  font-weight: 800;
-  font-size: 16px;
-  color: #2d3436;
-}
-
-.hero-subtitle {
-  font-size: 13px;
-  color: #636e72;
-  font-weight: 600;
-}
-
 /* Tool Selector Buttons */
 .tool-selector-group {
   display: flex;
