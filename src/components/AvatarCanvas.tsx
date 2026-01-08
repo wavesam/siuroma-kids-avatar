@@ -97,11 +97,18 @@ export function AvatarCanvas({
     .filter((p) => p.tab === "background")
     .pop() as PlacedWithNorm | undefined;
 
+  // Support both color and image backgrounds
   const background = backgroundItem?.color;
-  const backgroundSize = backgroundItem?.backgroundSize;
+  const backgroundImage = backgroundItem?.src
+    ? `url("${backgroundItem.src}")`
+    : undefined;
+
+  const backgroundSize =
+    backgroundItem?.backgroundSize ?? (backgroundImage ? "cover" : "auto");
+
   const backgroundRepeat =
     backgroundItem?.backgroundRepeat ??
-    (backgroundSize ? "repeat" : "no-repeat");
+    (backgroundImage ? "no-repeat" : backgroundSize ? "repeat" : "no-repeat");
 
   const drawingLayer = placed.find((p) => p.id === DRAWING_LAYER_ID) as
     | PlacedWithNorm
@@ -305,12 +312,14 @@ export function AvatarCanvas({
     }, 100);
   };
 
+  // Background style applied to the canvas container (not as a placed item)
   const backgroundStyle =
-    background != null
+    backgroundImage || background != null
       ? {
-          background,
+          background: backgroundImage || background,
           backgroundSize: backgroundSize ?? "auto",
           backgroundRepeat: backgroundRepeat,
+          backgroundPosition: backgroundImage ? "center" : undefined,
         }
       : { background: "transparent" as const };
 
@@ -384,6 +393,9 @@ export function AvatarCanvas({
           const item = raw as PlacedWithNorm;
           if (item.id === DRAWING_LAYER_ID) return null;
 
+          // Background item is not rendered as a placed item
+          if (item.tab === "background") return null;
+
           const stageW = stageSize.width || size;
           const stageH = stageSize.height || size;
 
@@ -397,10 +409,6 @@ export function AvatarCanvas({
 
           const left = xNorm * stageW;
           const top = yNorm * stageH;
-
-          if (item.tab === "background" && item.color && !item.src) {
-            return null;
-          }
 
           return (
             <div

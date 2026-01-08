@@ -124,7 +124,6 @@ export function BodyTab(props: BodyTabProps) {
           filterOptions={typeOptions}
           filterByOccupation={false}
         >
-          <h1>Body</h1>
           {genderSelector}
         </Closet>
       </div>

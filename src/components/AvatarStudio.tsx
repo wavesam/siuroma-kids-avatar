@@ -1,3 +1,4 @@
+// avatarstudio.tsx
 import React, { type JSX } from "react";
 import type {
   ClosetItem,
@@ -29,14 +30,14 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
   body: { snapItems: true },
   outfit: { snapItems: true },
-  accessories: { snapItems: true },
-  canvas: { snapItems: false },
-  background: { snapItems: false },
+  background: { snapItems: true },
+  accessories: { snapItems: false },
+  canvas: { snapItems: true },
 };
 
 export type ResolvedClosetItem = ClosetItem & {
   type: ClosetItemType;
-  size: number;
+  size: number; // base/design px size (relative to 800x800 canvas)
 };
 
 type SnapPlacedItem = PlacedItem & {
@@ -48,7 +49,17 @@ type SnapPlacedItem = PlacedItem & {
 };
 
 function resolveClosetItem(item: ClosetItem): ResolvedClosetItem | null {
+  // ✅ Support background items with no type (images or gradients)
+  if (item.tab === "background" && !item.type) {
+    return {
+      ...item,
+      type: "body", // default type to satisfy typing / snap config access
+      size: CANVAS_WIDTH, // fill canvas width
+    };
+  }
+
   if (!item.type) return null;
+
   const cfg = SNAP_CONFIG[item.type];
   return {
     ...item,
@@ -57,10 +68,37 @@ function resolveClosetItem(item: ClosetItem): ResolvedClosetItem | null {
   };
 }
 
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+// Default background on first load (white)
+const DEFAULT_BG: SnapPlacedItem = {
+  id: "bg-white",
+  name: "Background white",
+  tab: "background",
+  instanceId: "default-bg",
+  src: "",
+  type: "body", // keep as-is to satisfy existing PlacedItem typing in your app
+  x: CANVAS_WIDTH / 2,
+  y: CANVAS_HEIGHT / 2,
+  z: 0,
+  size: CANVAS_WIDTH,
+  xNorm: 0,
+  yNorm: 0,
+  sizeNorm: 1,
+  color: "#ffffff",
+};
+
 export function AvatarStudio() {
   const [gender, setGender] = React.useState<Gender>("male");
   const [tab, setTab] = React.useState<TabKey>("body");
-  const [placed, setPlaced] = React.useState<SnapPlacedItem[]>([]);
+
+  // ✅ Start with a white background already placed (so you see it on page entry)
+  const [placed, setPlaced] = React.useState<SnapPlacedItem[]>(() => [
+    DEFAULT_BG,
+  ]);
+
   const [topZ, setTopZ] = React.useState(1);
 
   const [draggingClosetId, setDraggingClosetId] = React.useState<string | null>(
@@ -81,6 +119,8 @@ export function AvatarStudio() {
     height: CANVAS_HEIGHT,
   });
 
+  const prevCanvasSizeRef = React.useRef(canvasSize);
+
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
   // Refs for export and persistence
@@ -98,12 +138,19 @@ export function AvatarStudio() {
     const MARGIN = 48;
     const HEADER_RESERVE = 220;
 
+    const getViewport = () => {
+      const vv = window.visualViewport;
+      return {
+        width: vv?.width ?? window.innerWidth,
+        height: vv?.height ?? window.innerHeight,
+      };
+    };
+
     const updateSize = () => {
-      const maxWidth = Math.max(320, window.innerWidth - MARGIN * 2);
-      const maxHeight = Math.max(
-        320,
-        window.innerHeight - HEADER_RESERVE - MARGIN * 2
-      );
+      const vp = getViewport();
+
+      const maxWidth = Math.max(320, vp.width - MARGIN * 2);
+      const maxHeight = Math.max(320, vp.height - HEADER_RESERVE - MARGIN * 2);
 
       const widthByHeight = maxHeight * CANVAS_ASPECT;
       const heightByWidth = maxWidth / CANVAS_ASPECT;
@@ -123,20 +170,57 @@ export function AvatarStudio() {
     };
 
     updateSize();
+
+    const vv = window.visualViewport;
     window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    vv?.addEventListener("resize", updateSize);
+    vv?.addEventListener("scroll", updateSize);
+
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      vv?.removeEventListener("resize", updateSize);
+      vv?.removeEventListener("scroll", updateSize);
+    };
   }, []);
 
   React.useEffect(() => {
+    const prev = prevCanvasSizeRef.current;
+    const prevW = prev.width || 1;
+    const prevH = prev.height || 1;
+
     setPlaced((current) =>
       current.map((p) => {
+        // ✅ Keep the background always covering the canvas after resizes
+        if (p.tab === "background") {
+          return {
+            ...p,
+            x: canvasSize.width / 2,
+            y: canvasSize.height / 2,
+            size: canvasSize.width,
+            xNorm: 0,
+            yNorm: 0,
+            sizeNorm: 1,
+            z: 0,
+          };
+        }
+
         if (p.id === "drawing-layer") {
           return { ...p, size: canvasSize.width, x: 0, y: 0 };
         }
 
-        const sizeNorm = p.sizeNorm ?? (p.size ? p.size / canvasSize.width : 0);
-        const xNorm = p.xNorm ?? (p.x ?? 0) / canvasSize.width;
-        const yNorm = p.yNorm ?? (p.y ?? 0) / canvasSize.height;
+        const baseSizeFromType =
+          p.type && SNAP_CONFIG[p.type] ? SNAP_CONFIG[p.type].size : undefined;
+
+        const sizeNorm =
+          p.sizeNorm ??
+          (typeof baseSizeFromType === "number"
+            ? baseSizeFromType / CANVAS_WIDTH
+            : p.size
+            ? p.size / prevW
+            : 0);
+
+        const xNorm = p.xNorm ?? (p.x ?? 0) / prevW;
+        const yNorm = p.yNorm ?? (p.y ?? 0) / prevH;
 
         const sizePx = sizeNorm * canvasSize.width;
         const xPx = xNorm * canvasSize.width;
@@ -153,6 +237,8 @@ export function AvatarStudio() {
         };
       })
     );
+
+    prevCanvasSizeRef.current = canvasSize;
   }, [canvasSize.width, canvasSize.height]);
 
   React.useEffect(() => {
@@ -198,6 +284,28 @@ export function AvatarStudio() {
 
   const isPlacingItemRef = React.useRef(false);
 
+  const getCanvasLocalDropPoint = (dropX: number, dropY: number) => {
+    const el = canvasRef.current;
+    if (!el) return { x: dropX, y: dropY };
+
+    const rect = el.getBoundingClientRect();
+
+    // Heuristic:
+    // - If (dropX, dropY) are within the rect in viewport space, treat them as viewport coords.
+    // - Otherwise, assume caller already passed canvas-local coords.
+    const looksViewport =
+      dropX >= rect.left &&
+      dropX <= rect.right &&
+      dropY >= rect.top &&
+      dropY <= rect.bottom;
+
+    if (looksViewport) {
+      return { x: dropX - rect.left, y: dropY - rect.top };
+    }
+
+    return { x: dropX, y: dropY };
+  };
+
   const placeClosetItem = (
     closetId: string,
     targetTab: TabKey,
@@ -215,9 +323,9 @@ export function AvatarStudio() {
 
     const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
     const ry = typeof dropY === "number" ? Math.round(dropY) : -1;
-    const dedupeKey = `${targetTab}:${closetId}: ${
+    const dedupeKey = `${targetTab}:${closetId}:${
       snapItems ? "snap" : "free"
-    }: ${rx},${ry}`;
+    }:${rx},${ry}`;
     if (!shouldAcceptDrop(dedupeKey)) return;
 
     isPlacingItemRef.current = true;
@@ -227,21 +335,43 @@ export function AvatarStudio() {
       y: cfg.y === 0 ? 0.5 : cfg.y,
     });
 
-    let xNorm: number,
-      yNorm: number,
-      sizeNorm: number,
-      snapAnchor: { x: number; y: number } | undefined;
+    // IMPORTANT: normalize against the fixed design canvas (800),
+    // not the current CSS pixel size (canvasSize.width), so zoom doesn't change sizes.
+    let sizeNorm = item.size / CANVAS_WIDTH;
 
-    sizeNorm = item.size / canvasSize.width;
+    // ✅ Background always fills the whole canvas
+    if (targetTab === "background") {
+      sizeNorm = 1.0;
+    }
+
+    let xNorm: number;
+    let yNorm: number;
+    let snapAnchor: { x: number; y: number } | undefined;
 
     if (!snapItems && typeof dropX === "number" && typeof dropY === "number") {
-      xNorm = dropX / canvasSize.width - sizeNorm / 2;
-      yNorm = dropY / canvasSize.height - sizeNorm / 2;
+      const local = getCanvasLocalDropPoint(dropX, dropY);
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const w = rect?.width ?? canvasSize.width;
+      const h = rect?.height ?? canvasSize.height;
+
+      const x01 = clamp(local.x / (w || 1), 0, 1);
+      const y01 = clamp(local.y / (h || 1), 0, 1);
+
+      xNorm = x01 - sizeNorm / 2;
+      yNorm = y01 - sizeNorm / 2;
     } else {
       const cfg = SNAP_CONFIG[item.type] ?? { x: 0.5, y: 0.5, size: item.size };
       snapAnchor = resolveSnapAnchor({ x: cfg.x, y: cfg.y });
       xNorm = snapAnchor.x - sizeNorm / 2;
       yNorm = snapAnchor.y - sizeNorm / 2;
+    }
+
+    // ✅ Background override: fill + center
+    if (targetTab === "background") {
+      snapAnchor = { x: 0.5, y: 0.5 };
+      xNorm = 0.5 - sizeNorm / 2;
+      yNorm = 0.5 - sizeNorm / 2;
     }
 
     const x = xNorm * canvasSize.width;
@@ -263,9 +393,14 @@ export function AvatarStudio() {
         }
 
         let filtered = current;
-        if (replaceSameType) {
+
+        // ✅ Background replacement: keep only one background at a time
+        if (targetTab === "background") {
+          filtered = filtered.filter((p) => p.tab !== "background");
+        } else if (replaceSameType) {
           filtered = filtered.filter((p) => p.type !== item.type);
         }
+
         const newInstanceId = crypto.randomUUID();
 
         setTimeout(() => {
@@ -277,10 +412,12 @@ export function AvatarStudio() {
           {
             ...item,
             instanceId: newInstanceId,
-            x,
-            y,
-            size: sizePx,
-            z: newZ,
+            // For background items, x/y are not used for rendering (they're applied via CSS),
+            // but keep them consistent for any export/debug logic.
+            x: targetTab === "background" ? canvasSize.width / 2 : x,
+            y: targetTab === "background" ? canvasSize.height / 2 : y,
+            size: targetTab === "background" ? canvasSize.width : sizePx,
+            z: targetTab === "background" ? 0 : newZ,
             isSnapped: snapItems,
             snapAnchor,
             xNorm,
@@ -396,11 +533,15 @@ export function AvatarStudio() {
   );
 
   const handleExportCanvas = async (): Promise<string | null> => {
+    // ✅ If a background exists in DOM, let it render naturally into the export.
+    // ✅ If it doesn't exist (e.g., user deleted it), fallback to white.
+    const hasBackground = placed.some((p) => p.tab === "background");
+
     return await exportCanvasToImage({
       avatarCanvasElement: canvasRef.current,
       drawingCanvasElement: drawingCanvasRef.current,
       scale: 2,
-      backgroundColor: null,
+      backgroundColor: hasBackground ? null : "#ffffff",
     });
   };
 

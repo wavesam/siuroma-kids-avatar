@@ -15,11 +15,11 @@ export const SNAP_CONFIG: Record<
   ClosetItemType,
   { x: number; y: number; size: number }
 > = {
-  hair: { x: 0.5, y: 0.34, size: 320 },
-  eyes: { x: 0.5, y: 0.3, size: 170 },
+  hair: { x: 0.5, y: 0.34, size: 500 },
+  eyes: { x: 0.5, y: 0.3, size: 250 },
   hat: { x: 0.5, y: 0.05, size: 100 },
   glasses: { x: 0.5, y: 0.22, size: 100 },
-  shirt: { x: 0.5, y: 0.95, size: 710 },
+  shirt: { x: 0.5, y: 1, size: 1200 },
   jacket: { x: 0.5, y: 0.38, size: 100 },
   trousers: { x: 0.5, y: 0.6, size: 100 },
   pants: { x: 0.5, y: 0.6, size: 100 },

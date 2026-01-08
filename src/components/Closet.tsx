@@ -35,10 +35,42 @@ const ICON_MAPPINGS: Record<string, string> = {
   other: "https://api.iconify.design/fluent-emoji-flat:package.svg",
 };
 
+function isBackgroundItem(it: ClosetItem) {
+  return it.tab === "background";
+}
+
+function getBackgroundPreviewStyle(it: ClosetItem) {
+  // Background items can be:
+  // - image backgrounds: it.src
+  // - gradient/solid backgrounds: it.color (valid CSS background value)
+  //
+  // Use `background` shorthand so it supports colors + gradients. [web:16][web:46]
+  const hasImage = typeof it.src === "string" && it.src.trim().length > 0;
+  const bg = (it as any).color as string | undefined;
+
+  if (hasImage) {
+    return {
+      backgroundImage: `url("${it.src}")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    } as const;
+  }
+
+  if (bg && bg.trim().length > 0) {
+    return {
+      background: bg,
+    } as const;
+  }
+
+  return {
+    background: "#ffffff",
+  } as const;
+}
+
 export function Closet({
   items,
   avatarGender,
-  tab,
   onStartDrag,
   onEndDrag,
   // Now generically named "filterOptions" instead of category/type
@@ -144,16 +176,28 @@ export function Closet({
             onDragEnd={onEndDrag}
           >
             <div className="closetPreview">
-              <img
-                src={it.src}
-                alt={it.name}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  pointerEvents: "none",
-                }}
-              />
+              {isBackgroundItem(it) ? (
+                <div
+                  aria-label={it.name}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: 6,
+                    ...getBackgroundPreviewStyle(it),
+                  }}
+                />
+              ) : (
+                <img
+                  src={it.src}
+                  alt={it.name}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
             </div>
             <div className="closetLabel">{it.name}</div>
           </div>

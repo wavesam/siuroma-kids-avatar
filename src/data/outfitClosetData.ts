@@ -38,8 +38,8 @@ export const outfitClosetData: ClosetItem[] = [
   },
   {
     id: "boyYoutuberHeadphone",
-    name: "YouTuber with Headphone (Male)",
-    type: "shirt",
+    name: "Headphones (Male)",
+    type: "hat",
     src: boyYoutuberHeadphone,
     gender: "male",
     tab: "outfit",
@@ -93,8 +93,8 @@ export const outfitClosetData: ClosetItem[] = [
   },
   {
     id: "girlYoutuberHeadphone",
-    name: "YouTuber with Headphone (Female)",
-    type: "shirt",
+    name: "Headphones (Female)",
+    type: "hat",
     src: girlYoutuberHeadphone,
     gender: "female",
     tab: "outfit",
