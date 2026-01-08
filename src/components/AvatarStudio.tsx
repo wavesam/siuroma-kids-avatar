@@ -12,7 +12,6 @@ import { BodyTab } from "./BodyTab";
 import { AccessoriesTab } from "./AccessoriesTab";
 import { CanvasTab } from "./CanvasTab";
 import { BackgroundTab } from "./BackgroundTab";
-// 1. Added imports for export functionality
 import { exportCanvasToImage, downloadImage } from "../utils/exportCanvas";
 
 const CANVAS_WIDTH = 800;
@@ -84,9 +83,15 @@ export function AvatarStudio() {
 
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
-  // 2. Added Refs for canvas export and state for the preview image
+  // Refs for export and persistence
   const canvasRef = React.useRef<HTMLDivElement | null>(null);
   const drawingCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  // --- History Persistence ---
+  // Store as PNG data URLs (resilient to resize + easy to persist)
+  const drawingHistoryRef = React.useRef<string[]>([]);
+  const drawingHistoryIndexRef = React.useRef<number>(-1);
+
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
 
   React.useLayoutEffect(() => {
@@ -125,6 +130,10 @@ export function AvatarStudio() {
   React.useEffect(() => {
     setPlaced((current) =>
       current.map((p) => {
+        if (p.id === "drawing-layer") {
+          return { ...p, size: canvasSize.width, x: 0, y: 0 };
+        }
+
         const sizeNorm = p.sizeNorm ?? (p.size ? p.size / canvasSize.width : 0);
         const xNorm = p.xNorm ?? (p.x ?? 0) / canvasSize.width;
         const yNorm = p.yNorm ?? (p.y ?? 0) / canvasSize.height;
@@ -328,7 +337,7 @@ export function AvatarStudio() {
     setDraggingPlacedId,
     draggingPlacedId,
     removePlacedByInstanceId,
-    canvasRef, // Added canvasRef to shared props
+    canvasRef,
   } as const;
 
   let TabContent: JSX.Element | null = null;
@@ -346,12 +355,13 @@ export function AvatarStudio() {
       TabContent = <AccessoriesTab {...sharedTabProps} />;
       break;
     case "canvas":
-      // 3. Updated CanvasTab to receive both refs
       TabContent = (
         <CanvasTab
           {...sharedTabProps}
           avatarCanvasRef={canvasRef}
           drawingCanvasRef={drawingCanvasRef}
+          drawingHistoryRef={drawingHistoryRef}
+          drawingHistoryIndexRef={drawingHistoryIndexRef}
         />
       );
       break;
@@ -385,7 +395,6 @@ export function AvatarStudio() {
     [progressPercent]
   );
 
-  // 4. Implement Export Logic
   const handleExportCanvas = async (): Promise<string | null> => {
     return await exportCanvasToImage({
       avatarCanvasElement: canvasRef.current,
@@ -402,13 +411,11 @@ export function AvatarStudio() {
       return;
     }
 
-    // Convert data URL to Blob
     const blob = await (await fetch(dataUrl)).blob();
     const file = new File([blob], `avatar-${Date.now()}.png`, {
       type: "image/png",
     });
 
-    // Try Web Share API with files
     if (
       navigator.share &&
       navigator.canShare &&
@@ -430,7 +437,6 @@ export function AvatarStudio() {
       }
     }
 
-    // Try Web Share API (text only fallback)
     if (navigator.share) {
       try {
         await navigator.share({
@@ -447,7 +453,6 @@ export function AvatarStudio() {
       }
     }
 
-    // Fallback: Clipboard
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
@@ -502,7 +507,7 @@ export function AvatarStudio() {
           <button
             type="button"
             className="studioFinishButton"
-            onClick={handlePreviewOpen} // Updated to call preview handler
+            onClick={handlePreviewOpen}
           >
             Finish
           </button>

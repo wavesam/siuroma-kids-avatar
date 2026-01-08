@@ -26,12 +26,18 @@ interface CanvasTabProps {
   isHoveringTrash: boolean;
   removePlacedByInstanceId: (iid: string) => void;
 
-  // Refs passed from AvatarStudio for export functionality
   avatarCanvasRef: React.RefObject<HTMLDivElement | null>;
   drawingCanvasRef: React.RefObject<HTMLCanvasElement | null>;
+
+  // History stored as PNG data URLs
+  drawingHistoryRef: React.MutableRefObject<string[]>;
+  drawingHistoryIndexRef: React.MutableRefObject<number>;
 }
 
 type DrawingTool = "brush" | "eraser";
+
+const DRAWING_LAYER_ID = "drawing-layer";
+const MAX_HISTORY = 50;
 
 export function CanvasTab(props: CanvasTabProps) {
   const {
@@ -41,8 +47,8 @@ export function CanvasTab(props: CanvasTabProps) {
     setPlaced,
     setDraggingClosetId,
     setDragPos,
-    canvasWidth, // used in effect dependency
-    canvasHeight, // used in effect dependency
+    canvasWidth,
+    canvasHeight,
     placeClosetItem,
     snapItems,
     setDraggingPlacedId,
@@ -52,6 +58,8 @@ export function CanvasTab(props: CanvasTabProps) {
     closet,
     avatarCanvasRef,
     drawingCanvasRef,
+    drawingHistoryRef,
+    drawingHistoryIndexRef,
   } = props;
 
   const [tool, setTool] = React.useState<DrawingTool>("brush");
@@ -61,163 +69,288 @@ export function CanvasTab(props: CanvasTabProps) {
   const [multiPointCount, setMultiPointCount] = React.useState(5);
   const [multiPointSpread, setMultiPointSpread] = React.useState(10);
 
-  // Local ref for container logic (drag & drop calculations)
   const canvasContainerRef = React.useRef<HTMLDivElement | null>(null);
-
   const [isDrawing, setIsDrawing] = React.useState(false);
-  const historyRef = React.useRef<ImageData[]>([]);
-  const historyIndexRef = React.useRef(-1);
+
   const [canUndo, setCanUndo] = React.useState(false);
   const [canRedo, setCanRedo] = React.useState(false);
 
+  const isInitializingRef = React.useRef(true);
+  const isRestoringRef = React.useRef(false);
+  const dprRef = React.useRef<number>(window.devicePixelRatio || 1);
+
+  const placedWithoutDrawing = React.useMemo(
+    () => placed.filter((p) => p.id !== DRAWING_LAYER_ID),
+    [placed]
+  );
+
   const updateHistoryButtons = React.useCallback(() => {
-    setCanUndo(historyIndexRef.current > 0);
-    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
-  }, []);
+    setCanUndo(drawingHistoryIndexRef.current > 0);
+    setCanRedo(
+      drawingHistoryIndexRef.current >= 0 &&
+        drawingHistoryIndexRef.current < drawingHistoryRef.current.length - 1
+    );
+  }, [drawingHistoryIndexRef, drawingHistoryRef]);
+
+  const persistDrawingLayer = React.useCallback(
+    (dataUrl: string) => {
+      const canvas = drawingCanvasRef.current;
+      if (!canvas) return;
+
+      setPlaced((current) => {
+        const others = current.filter((p) => p.id !== DRAWING_LAYER_ID);
+        return [
+          ...others,
+          {
+            id: DRAWING_LAYER_ID,
+            instanceId: DRAWING_LAYER_ID,
+            tab: "canvas",
+            type: "drawing",
+            src: dataUrl,
+            x: 0,
+            y: 0,
+            z: 9999,
+            size: canvas.width,
+            xNorm: 0,
+            yNorm: 0,
+            sizeNorm: 1,
+          } as any,
+        ];
+      });
+    },
+    [drawingCanvasRef, setPlaced]
+  );
+
+  const syncCanvasResolution = React.useCallback(() => {
+    const canvas = drawingCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    dprRef.current = dpr;
+
+    const nextW = Math.max(1, Math.round(rect.width * dpr));
+    const nextH = Math.max(1, Math.round(rect.height * dpr));
+
+    const sizeChanged = canvas.width !== nextW || canvas.height !== nextH;
+    if (sizeChanged) {
+      canvas.width = nextW;
+      canvas.height = nextH;
+    }
+
+    // Always ensure transform is correct for CSS-pixel drawing coords
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+  }, [drawingCanvasRef]);
+
+  const renderDataUrlToCanvas = React.useCallback(
+    async (dataUrl: string) => {
+      const canvas = drawingCanvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      isRestoringRef.current = true;
+
+      await new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          // draw in raw pixel space (identity transform)
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          // restore transform for normal drawing (CSS pixels)
+          const dpr = dprRef.current || 1;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+      });
+
+      isRestoringRef.current = false;
+    },
+    [drawingCanvasRef]
+  );
 
   const saveState = React.useCallback(() => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
+    if (isRestoringRef.current) return;
 
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
-
-    if (canvas.width === 0 || canvas.height === 0) {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-    }
-
-    if (historyIndexRef.current < historyRef.current.length - 1) {
-      historyRef.current = historyRef.current.slice(
-        0,
-        historyIndexRef.current + 1
-      );
-    }
+    // Ensure canvas internal size matches DOM size before snapshot
+    syncCanvasResolution();
 
     try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      historyRef.current.push(imageData);
-      historyIndexRef.current = historyRef.current.length - 1;
+      // Save as PNG snapshot
+      const dataUrl = canvas.toDataURL("image/png");
 
-      const MAX_HISTORY = 50;
-      if (historyRef.current.length > MAX_HISTORY) {
-        historyRef.current.shift();
-        historyIndexRef.current--;
+      // Truncate redo states if we are not at the end
+      const idx = drawingHistoryIndexRef.current;
+      if (idx < drawingHistoryRef.current.length - 1) {
+        drawingHistoryRef.current = drawingHistoryRef.current.slice(0, idx + 1);
+      }
+
+      const last =
+        drawingHistoryRef.current[drawingHistoryRef.current.length - 1];
+      if (last !== dataUrl) {
+        drawingHistoryRef.current.push(dataUrl);
+        drawingHistoryIndexRef.current = drawingHistoryRef.current.length - 1;
+
+        if (drawingHistoryRef.current.length > MAX_HISTORY) {
+          drawingHistoryRef.current.shift();
+          drawingHistoryIndexRef.current = Math.max(
+            0,
+            drawingHistoryIndexRef.current - 1
+          );
+        }
       }
 
       updateHistoryButtons();
+      persistDrawingLayer(dataUrl);
     } catch (error) {
-      console.error("Error saving state:", error);
+      console.error("Error saving drawing state:", error);
     }
-  }, [updateHistoryButtons, drawingCanvasRef]);
+  }, [
+    drawingCanvasRef,
+    drawingHistoryRef,
+    drawingHistoryIndexRef,
+    updateHistoryButtons,
+    persistDrawingLayer,
+    syncCanvasResolution,
+  ]);
+
+  const restoreState = React.useCallback(
+    async (index: number) => {
+      const history = drawingHistoryRef.current;
+      if (index < 0 || index >= history.length) return;
+
+      const dataUrl = history[index];
+      if (!dataUrl) return;
+
+      // Ensure canvas resolution is correct for current layout, then render snapshot
+      syncCanvasResolution();
+      await renderDataUrlToCanvas(dataUrl);
+
+      drawingHistoryIndexRef.current = index;
+      updateHistoryButtons();
+
+      // Crucial: persist restored snapshot so tab switches don’t “revert”
+      persistDrawingLayer(dataUrl);
+    },
+    [
+      drawingHistoryRef,
+      drawingHistoryIndexRef,
+      updateHistoryButtons,
+      persistDrawingLayer,
+      syncCanvasResolution,
+      renderDataUrlToCanvas,
+    ]
+  );
+
+  const undo = React.useCallback(() => {
+    if (drawingHistoryIndexRef.current > 0) {
+      void restoreState(drawingHistoryIndexRef.current - 1);
+    }
+  }, [restoreState, drawingHistoryIndexRef]);
+
+  const redo = React.useCallback(() => {
+    if (
+      drawingHistoryIndexRef.current >= 0 &&
+      drawingHistoryIndexRef.current < drawingHistoryRef.current.length - 1
+    ) {
+      void restoreState(drawingHistoryIndexRef.current + 1);
+    }
+  }, [restoreState, drawingHistoryIndexRef, drawingHistoryRef]);
 
   React.useEffect(() => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
+    syncCanvasResolution();
 
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const newWidth = rect.width * dpr;
-    const newHeight = rect.height * dpr;
+    // Buttons should reflect whatever persisted history exists (from parent refs)
+    updateHistoryButtons();
 
-    // Only resize if dimensions actually changed
-    if (canvas.width !== newWidth || canvas.height !== newHeight) {
-      const hasExistingContent = canvas.width > 0 && canvas.height > 0;
-      let imageData: ImageData | null = null;
+    const savedDrawing = placed.find((p) => p.id === DRAWING_LAYER_ID);
 
-      if (hasExistingContent && historyRef.current.length > 0) {
-        try {
-          imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        } catch (error) {
-          console.error("Error saving canvas content before resize:", error);
-        }
-      }
+    const init = async () => {
+      if (savedDrawing?.src) {
+        await renderDataUrlToCanvas(savedDrawing.src);
 
-      canvas.width = newWidth;
-      canvas.height = newHeight;
-      ctx.scale(dpr, dpr);
-
-      if (imageData) {
-        // If we have data, put it back.
-        // Note: scaling the image data to fit new size is complex;
-        // simple putImageData restores pixels 1:1.
-        // For a simple resize fix, this is usually acceptable.
-        ctx.putImageData(imageData, 0, 0);
-        saveState();
-      } else {
-        ctx.clearRect(0, 0, rect.width, rect.height);
-        if (historyRef.current.length === 0) {
-          saveState();
-        }
-      }
-    }
-  }, [canvasWidth, canvasHeight, saveState, drawingCanvasRef]);
-
-  const restoreState = React.useCallback(
-    (index: number) => {
-      const canvas = drawingCanvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
-
-      if (index >= 0 && index < historyRef.current.length) {
-        const imageData = historyRef.current[index];
-        if (imageData) {
-          // Ensure canvas matches image data size to avoid cropping
-          if (
-            canvas.width !== imageData.width ||
-            canvas.height !== imageData.height
-          ) {
-            canvas.width = imageData.width;
-            canvas.height = imageData.height;
+        // Initialize history only if empty (so switching tabs doesn’t wipe undo stack)
+        if (drawingHistoryRef.current.length === 0) {
+          drawingHistoryRef.current = [savedDrawing.src];
+          drawingHistoryIndexRef.current = 0;
+          updateHistoryButtons();
+        } else {
+          // Ensure current history snapshot is rendered (in case resize changed)
+          const idx = drawingHistoryIndexRef.current;
+          const cur = drawingHistoryRef.current[idx];
+          if (cur) {
+            await renderDataUrlToCanvas(cur);
           }
-          ctx.putImageData(imageData, 0, 0);
-          historyIndexRef.current = index;
+          updateHistoryButtons();
+        }
+      } else {
+        // No saved image: ensure we at least have a blank initial state
+        if (drawingHistoryRef.current.length === 0) {
+          const blank = canvas.toDataURL("image/png");
+          drawingHistoryRef.current = [blank];
+          drawingHistoryIndexRef.current = 0;
+          updateHistoryButtons();
+          persistDrawingLayer(blank);
+        } else {
+          const idx = drawingHistoryIndexRef.current;
+          const cur = drawingHistoryRef.current[idx];
+          if (cur) {
+            await renderDataUrlToCanvas(cur);
+          }
           updateHistoryButtons();
         }
       }
-    },
-    [updateHistoryButtons, drawingCanvasRef]
-  );
 
-  const undo = React.useCallback(() => {
-    if (historyIndexRef.current > 0 && historyRef.current.length > 0) {
-      const newIndex = historyIndexRef.current - 1;
-      restoreState(newIndex);
+      isInitializingRef.current = false;
+    };
+
+    void init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-sync canvas resolution on layout changes WITHOUT pushing new history entries
+  React.useEffect(() => {
+    if (isInitializingRef.current) return;
+
+    syncCanvasResolution();
+
+    const idx = drawingHistoryIndexRef.current;
+    const cur = drawingHistoryRef.current[idx];
+    if (cur) {
+      void renderDataUrlToCanvas(cur);
     }
-  }, [restoreState]);
+  }, [
+    canvasWidth,
+    canvasHeight,
+    syncCanvasResolution,
+    renderDataUrlToCanvas,
+    drawingHistoryRef,
+    drawingHistoryIndexRef,
+  ]);
 
-  const redo = React.useCallback(() => {
-    if (
-      historyIndexRef.current < historyRef.current.length - 1 &&
-      historyRef.current.length > 0
-    ) {
-      const newIndex = historyIndexRef.current + 1;
-      restoreState(newIndex);
-    }
-  }, [restoreState]);
-
-  const getPointFromEvent = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
+  const getPointFromEvent = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return null;
-
     const rect = canvas.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
+    const clientX =
+      "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY =
+      "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
   const drawMultiPoint = React.useCallback(
@@ -231,12 +364,8 @@ export function CanvasTab(props: CanvasTabProps) {
         const distance = Math.random() * multiPointSpread;
         const x = center.x + Math.cos(angle) * distance;
         const y = center.y + Math.sin(angle) * distance;
-
-        const pointSize = size * (0.6 + Math.random() * 0.4);
-        const radius = pointSize / 2;
-
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.arc(x, y, (size * (0.6 + Math.random() * 0.4)) / 2, 0, Math.PI * 2);
         ctx.fill();
       }
     },
@@ -250,9 +379,12 @@ export function CanvasTab(props: CanvasTabProps) {
     ) => {
       const canvas = drawingCanvasRef.current;
       if (!canvas) return;
-
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+
+      // Ensure correct transform for CSS-pixel drawing
+      const dpr = dprRef.current || 1;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -276,7 +408,6 @@ export function CanvasTab(props: CanvasTabProps) {
               Math.pow(point.y - prevPoint.y, 2)
           );
           const steps = Math.max(3, Math.floor(distance / (brushSize / 2)));
-
           for (let i = 0; i <= steps; i++) {
             const t = i / steps;
             const x = prevPoint.x + (point.x - prevPoint.x) * t;
@@ -293,9 +424,8 @@ export function CanvasTab(props: CanvasTabProps) {
           ctx.lineTo(point.x, point.y);
           ctx.stroke();
         } else {
-          const radius = ctx.lineWidth / 2;
           ctx.beginPath();
-          ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+          ctx.arc(point.x, point.y, ctx.lineWidth / 2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -320,9 +450,10 @@ export function CanvasTab(props: CanvasTabProps) {
         | React.TouchEvent<HTMLCanvasElement>
     ) => {
       e.preventDefault();
-      if (setDraggingClosetId) setDraggingClosetId(null);
-      if (setDraggingPlacedId) setDraggingPlacedId(null);
+      setDraggingClosetId?.(null);
+      setDraggingPlacedId?.(null);
 
+      // If user starts drawing after undo, next saveState() will truncate redo history
       const point = getPointFromEvent(e);
       if (!point) return;
 
@@ -330,15 +461,11 @@ export function CanvasTab(props: CanvasTabProps) {
       prevPointRef.current = null;
       hasStartedDrawingRef.current = false;
 
-      if (!hasStartedDrawingRef.current) {
-        saveState();
-        hasStartedDrawingRef.current = true;
-      }
-
       draw(point, null);
       prevPointRef.current = point;
+      hasStartedDrawingRef.current = true;
     },
-    [draw, saveState, setDraggingClosetId, setDraggingPlacedId]
+    [draw, setDraggingClosetId, setDraggingPlacedId]
   );
 
   const handleMove = React.useCallback(
@@ -349,10 +476,8 @@ export function CanvasTab(props: CanvasTabProps) {
     ) => {
       e.preventDefault();
       if (!isDrawing) return;
-
       const point = getPointFromEvent(e);
       if (!point) return;
-
       draw(point, prevPointRef.current);
       prevPointRef.current = point;
     },
@@ -372,11 +497,9 @@ export function CanvasTab(props: CanvasTabProps) {
     const handleMouseUp = () => handleEnd();
     const handleMouseLeave = () => handleEnd();
     const handleTouchEnd = () => handleEnd();
-
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("mouseleave", handleMouseLeave);
     window.addEventListener("touchend", handleTouchEnd);
-
     return () => {
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("mouseleave", handleMouseLeave);
@@ -398,7 +521,6 @@ export function CanvasTab(props: CanvasTabProps) {
         redo();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo]);
@@ -409,9 +531,7 @@ export function CanvasTab(props: CanvasTabProps) {
       const container = canvasContainerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setDragPos({ x, y });
+      setDragPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       e.dataTransfer.dropEffect = "copy";
     },
     [setDragPos]
@@ -428,13 +548,10 @@ export function CanvasTab(props: CanvasTabProps) {
       const container = canvasContainerRef.current;
       if (container) {
         const rect = container.getBoundingClientRect();
-        const dropX = e.clientX - rect.left;
-        const dropY = e.clientY - rect.top;
-        placeClosetItem(id, tab, dropX, dropY);
+        placeClosetItem(id, tab, e.clientX - rect.left, e.clientY - rect.top);
       } else {
         placeClosetItem(id, tab);
       }
-
       setDragPos(null);
       setDraggingClosetId(null);
     },
@@ -471,6 +588,7 @@ export function CanvasTab(props: CanvasTabProps) {
           className={`big-tool-btn ${tool === "brush" ? "active" : ""}`}
           onClick={() => setTool("brush")}
           title="Paint Brush"
+          type="button"
         >
           <span className="big-tool-icon">✏️</span>
           <span className="big-tool-label">Draw</span>
@@ -479,6 +597,7 @@ export function CanvasTab(props: CanvasTabProps) {
           className={`big-tool-btn ${tool === "eraser" ? "active" : ""}`}
           onClick={() => setTool("eraser")}
           title="Eraser"
+          type="button"
         >
           <span className="big-tool-icon">🧼</span>
           <span className="big-tool-label">Erase</span>
@@ -511,7 +630,7 @@ export function CanvasTab(props: CanvasTabProps) {
                   className={`color-dot ${brushColor === c ? "selected" : ""}`}
                   style={{ backgroundColor: c }}
                   onClick={() => setBrushColor(c)}
-                  aria-label={`Select color ${c}`}
+                  type="button"
                 />
               ))}
               <div className="custom-picker-wrapper">
@@ -538,7 +657,6 @@ export function CanvasTab(props: CanvasTabProps) {
                 <span className="slider round"></span>
               </label>
             </div>
-
             {multiPointEnabled && (
               <div className="magic-controls">
                 <div className="mini-control">
@@ -593,7 +711,7 @@ export function CanvasTab(props: CanvasTabProps) {
           className="history-pill"
           onClick={undo}
           disabled={!canUndo}
-          title="Undo"
+          type="button"
         >
           <span className="icon">↩️</span> Undo
         </button>
@@ -601,7 +719,7 @@ export function CanvasTab(props: CanvasTabProps) {
           className="history-pill"
           onClick={redo}
           disabled={!canRedo}
-          title="Redo"
+          type="button"
         >
           Redo <span className="icon">↪️</span>
         </button>
@@ -612,18 +730,13 @@ export function CanvasTab(props: CanvasTabProps) {
   return (
     <div className="studioBody">
       <div className="left" style={{ position: "relative", zIndex: 50 }}>
-        {/*
-          We use this single div as the capture target for both the avatar AND the drawing canvas.
-          We update local 'canvasContainerRef' for drop logic,
-          AND 'avatarCanvasRef' (from parent) for export logic.
-        */}
         <div
           className="canvasContainer"
           ref={(node) => {
             canvasContainerRef.current = node;
             if (avatarCanvasRef) {
               if (typeof avatarCanvasRef === "function") {
-                (avatarCanvasRef as Function)(node);
+                (avatarCanvasRef as unknown as Function)(node);
               } else {
                 (
                   avatarCanvasRef as React.MutableRefObject<HTMLDivElement | null>
@@ -640,7 +753,7 @@ export function CanvasTab(props: CanvasTabProps) {
             tab={tab}
             size={300}
             offsetY={0}
-            placed={placed}
+            placed={placedWithoutDrawing}
             setPlaced={setPlaced}
             freelyDraggable={!snapItems}
             setDraggingPlacedId={setDraggingPlacedId}
@@ -650,6 +763,7 @@ export function CanvasTab(props: CanvasTabProps) {
             placeClosetItem={placeClosetItem}
             snapItems={snapItems}
           />
+
           <canvas
             ref={drawingCanvasRef}
             className="drawingCanvas"

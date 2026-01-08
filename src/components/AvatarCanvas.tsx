@@ -7,10 +7,13 @@ type PlacedWithNorm = PlacedItem & {
   xNorm?: number;
   yNorm?: number;
   sizeNorm?: number;
-  color?: string; // CSS background string
+  color?: string;
   backgroundSize?: string;
   backgroundRepeat?: string;
+  src?: string;
 };
+
+const DRAWING_LAYER_ID = "drawing-layer";
 
 function AvatarImage({
   gender,
@@ -45,7 +48,6 @@ function AvatarImage({
   );
 }
 
-// All geometry is kept in normalized coordinates (0–1) relative to the stage.
 export function AvatarCanvas({
   gender,
   tab,
@@ -91,7 +93,6 @@ export function AvatarCanvas({
   const avatarStageRef = React.useRef<HTMLDivElement | null>(null);
   const avatarCanvasRef = React.useRef<HTMLDivElement | null>(null);
 
-  // Compute background style from the last placed background item (if any)
   const backgroundItem = [...placed]
     .filter((p) => p.tab === "background")
     .pop() as PlacedWithNorm | undefined;
@@ -101,6 +102,10 @@ export function AvatarCanvas({
   const backgroundRepeat =
     backgroundItem?.backgroundRepeat ??
     (backgroundSize ? "repeat" : "no-repeat");
+
+  const drawingLayer = placed.find((p) => p.id === DRAWING_LAYER_ID) as
+    | PlacedWithNorm
+    | undefined;
 
   React.useLayoutEffect(() => {
     const el = avatarStageRef.current;
@@ -134,6 +139,8 @@ export function AvatarCanvas({
     id: string,
     e: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => {
+    if (id === DRAWING_LAYER_ID) return;
+
     if (!freelyDraggable || !setDraggingPlacedId) return;
     const rect = getStageRect();
     if (!rect) return;
@@ -331,6 +338,21 @@ export function AvatarCanvas({
       }}
       onDrop={handleDrop}
     >
+      {drawingLayer?.src ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 350,
+            pointerEvents: "none",
+            backgroundImage: `url("${drawingLayer.src}")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "0 0",
+            backgroundSize: "100% 100%",
+          }}
+        />
+      ) : null}
+
       <div
         className="avatarStage"
         style={{
@@ -360,6 +382,8 @@ export function AvatarCanvas({
 
         {placed.map((raw) => {
           const item = raw as PlacedWithNorm;
+          if (item.id === DRAWING_LAYER_ID) return null;
+
           const stageW = stageSize.width || size;
           const stageH = stageSize.height || size;
 
@@ -369,7 +393,7 @@ export function AvatarCanvas({
           const yNorm = item.yNorm ?? (item.y ?? 0) / stageH;
 
           const renderW = sizeNorm * stageW;
-          const renderH = renderW; // square items
+          const renderH = renderW;
 
           const left = xNorm * stageW;
           const top = yNorm * stageH;
@@ -392,7 +416,6 @@ export function AvatarCanvas({
                 position: "absolute",
                 cursor: freelyDraggable ? "grab" : undefined,
                 pointerEvents: freelyDraggable ? "auto" : "none",
-                // FIX: Removed flex centering; background-position handles it now.
               }}
               onMouseDown={
                 freelyDraggable
@@ -411,9 +434,6 @@ export function AvatarCanvas({
                 }
               }}
             >
-              {/* FIX: Use div with background-image instead of img tag.
-                  This supports 'contain' scaling perfectly in html2canvas for 
-                  BOTH landscape (eyes) and portrait (dresses) items. */}
               {item.src ? (
                 <div
                   style={{
