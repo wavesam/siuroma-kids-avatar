@@ -148,7 +148,7 @@ export function AvatarCanvas({
   ) => {
     if (id === DRAWING_LAYER_ID) return;
 
-    if (!freelyDraggable || !setDraggingPlacedId) return;
+    if (!setDraggingPlacedId) return;
     const rect = getStageRect();
     if (!rect) return;
 
@@ -156,6 +156,13 @@ export function AvatarCanvas({
       | PlacedWithNorm
       | undefined;
     if (!item) return;
+
+    // ✅ Check both tab-level and item-level snapItems
+    // If tab snapItems is true, all items are non-draggable
+    // If tab snapItems is false, check item's snapItems (must be false to be draggable)
+    const tabSnapItems = snapItems ?? false;
+    const itemSnapItems = item.snapItems ?? false;
+    if (tabSnapItems || itemSnapItems) return; // Not draggable if tab is true OR item is true
 
     const xNorm = item.xNorm ?? item.x / rect.width;
     const yNorm = item.yNorm ?? item.y / rect.height;
@@ -271,7 +278,10 @@ export function AvatarCanvas({
 
     if (!id) return;
 
-    if (freelyDraggable) {
+    // For items that use snap (snapItems=true), allow replacement of same type
+    // For items that are freely draggable (snapItems=false), check if already placed
+    // Since we don't have the item data here, use the snapItems prop as fallback
+    if (!snapItems) {
       const isAlreadyPlaced = placed.some((item) => item.id === id);
       if (isAlreadyPlaced) return;
     }
@@ -410,6 +420,12 @@ export function AvatarCanvas({
           const left = xNorm * stageW;
           const top = yNorm * stageH;
 
+          // ✅ Check both tab-level and item-level snapItems
+          // Item is draggable only if: tab snapItems is false AND item snapItems is false
+          const tabSnapItems = snapItems ?? false;
+          const itemSnapItems = item.snapItems ?? false;
+          const isItemDraggable = !tabSnapItems && !itemSnapItems;
+
           return (
             <div
               key={item.instanceId}
@@ -422,18 +438,18 @@ export function AvatarCanvas({
                 height: `${renderH}px`,
                 zIndex: item.z ?? 1,
                 position: "absolute",
-                cursor: freelyDraggable ? "grab" : undefined,
-                pointerEvents: freelyDraggable ? "auto" : "none",
+                cursor: isItemDraggable ? "grab" : undefined,
+                pointerEvents: isItemDraggable ? "auto" : "none",
               }}
               onMouseDown={
-                freelyDraggable
+                isItemDraggable
                   ? (e) => {
                       onMouseDown(item.instanceId, e);
                     }
                   : undefined
               }
               onDragStart={(e) => {
-                if (freelyDraggable || dragPlacingRef.current) {
+                if (isItemDraggable || dragPlacingRef.current) {
                   e.preventDefault();
                   e.stopPropagation();
                   e.dataTransfer.clearData();

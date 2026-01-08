@@ -872,7 +872,6 @@ export function CanvasTab(props: CanvasTabProps) {
             offsetY={0}
             placed={placedWithoutDrawing}
             setPlaced={setPlaced}
-            freelyDraggable={!snapItems}
             setDraggingPlacedId={setDraggingPlacedId}
             setIsHoveringTrash={setIsHoveringTrash}
             isHoveringTrash={isHoveringTrash}

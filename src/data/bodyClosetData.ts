@@ -17,6 +17,7 @@ export const bodyClosetData: ClosetItemDefinition[] = [
     type: "eyes",
     src: boyEyes1,
     gender: "male",
+    snapItems: false,
   },
   {
     id: "girlEyes1",
@@ -24,6 +25,7 @@ export const bodyClosetData: ClosetItemDefinition[] = [
     type: "eyes",
     src: girlEyes1,
     gender: "female",
+    snapItems: true,
   },
   {
     id: "boyHair1",
@@ -31,6 +33,7 @@ export const bodyClosetData: ClosetItemDefinition[] = [
     type: "hair",
     src: boyHair1,
     gender: "male",
+    snapItems: true,
   },
   {
     id: "boyHair2",
@@ -38,6 +41,7 @@ export const bodyClosetData: ClosetItemDefinition[] = [
     type: "hair",
     src: boyHair2,
     gender: "male",
+    snapItems: true,
   },
   {
     id: "girlHair1",
@@ -45,6 +49,7 @@ export const bodyClosetData: ClosetItemDefinition[] = [
     type: "hair",
     src: girlHair1,
     gender: "female",
+    snapItems: true,
   },
   {
     id: "girlHair2",
@@ -52,5 +57,6 @@ export const bodyClosetData: ClosetItemDefinition[] = [
     type: "hair",
     src: girlHair2,
     gender: "female",
+    snapItems: true,
   },
 ];

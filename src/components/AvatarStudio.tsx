@@ -27,6 +27,8 @@ const TABS: { key: TabKey; label: string; number: number }[] = [
   { key: "canvas", label: "Canvas", number: 5 },
 ];
 
+// Deprecated: snapItems is now defined per item in data files
+// Keeping as fallback default for tab-level behavior
 const TAB_BEHAVIORS: Record<TabKey, { snapItems: boolean }> = {
   body: { snapItems: true },
   outfit: { snapItems: true },
@@ -278,9 +280,10 @@ export function AvatarStudio() {
     };
   }, []);
 
-  const { snapItems } = TAB_BEHAVIORS[tab];
-  const replaceSameType = snapItems;
-  const showTrash = !snapItems;
+  // Tab-level snapItems (fallback for UI behavior, e.g., showTrash)
+  // Individual items can override this via their snapItems field
+  const { snapItems: tabSnapItems } = TAB_BEHAVIORS[tab];
+  const showTrash = !tabSnapItems;
 
   const isPlacingItemRef = React.useRef(false);
 
@@ -321,10 +324,14 @@ export function AvatarStudio() {
     const item = resolveClosetItem(rawItem);
     if (!item) return;
 
+    // ✅ Read snapItems from item data, fallback to tab default
+    const itemSnapItems =
+      rawItem.snapItems ?? item.snapItems ?? TAB_BEHAVIORS[targetTab].snapItems;
+
     const rx = typeof dropX === "number" ? Math.round(dropX) : -1;
     const ry = typeof dropY === "number" ? Math.round(dropY) : -1;
     const dedupeKey = `${targetTab}:${closetId}:${
-      snapItems ? "snap" : "free"
+      itemSnapItems ? "snap" : "free"
     }:${rx},${ry}`;
     if (!shouldAcceptDrop(dedupeKey)) return;
 
@@ -348,7 +355,7 @@ export function AvatarStudio() {
     let yNorm: number;
     let snapAnchor: { x: number; y: number } | undefined;
 
-    if (!snapItems && typeof dropX === "number" && typeof dropY === "number") {
+    if (!itemSnapItems && typeof dropX === "number" && typeof dropY === "number") {
       const local = getCanvasLocalDropPoint(dropX, dropY);
 
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -397,7 +404,8 @@ export function AvatarStudio() {
         // ✅ Background replacement: keep only one background at a time
         if (targetTab === "background") {
           filtered = filtered.filter((p) => p.tab !== "background");
-        } else if (replaceSameType) {
+        } else if (itemSnapItems) {
+          // If item uses snap, replace items of the same type
           filtered = filtered.filter((p) => p.type !== item.type);
         }
 
@@ -418,7 +426,8 @@ export function AvatarStudio() {
             y: targetTab === "background" ? canvasSize.height / 2 : y,
             size: targetTab === "background" ? canvasSize.width : sizePx,
             z: targetTab === "background" ? 0 : newZ,
-            isSnapped: snapItems,
+            snapItems: itemSnapItems, // ✅ Explicitly set snapItems so it's available on the placed item
+            isSnapped: itemSnapItems,
             snapAnchor,
             xNorm,
             yNorm,
@@ -466,7 +475,7 @@ export function AvatarStudio() {
     canvasWidth: canvasSize.width,
     canvasHeight: canvasSize.height,
     placeClosetItem,
-    snapItems,
+    snapItems: tabSnapItems,
     showTrash,
     removePlacedByClosetId,
     setIsHoveringTrash,

@@ -52,6 +52,8 @@ export interface ClosetItem {
   gender?: Gender | "unisex";
   tab: TabKey;
   color?: string;
+  /** Whether this item should snap to fixed positions (true) or be freely draggable (false) */
+  snapItems?: boolean;
 }
 
 /**

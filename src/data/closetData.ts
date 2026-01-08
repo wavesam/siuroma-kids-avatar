@@ -37,7 +37,7 @@ export const CLOSET_DATA_BY_TAB: Record<TabKey, ClosetItem[]> = {
   // If these files still include `tab`, either update them to ClosetItemDefinition[] too,
   // or keep the cast until you migrate them.
   outfit: withTab(outfitClosetData as any, "outfit"),
-  accessories: withTab(accessoriesClosetData as any, "accessories"),
+  accessories: withTab(accessoriesClosetData, "accessories"),
   canvas: withTab(canvasClosetData as any, "canvas"),
   background: withTab(backgroundClosetData as any, "background"),
 };

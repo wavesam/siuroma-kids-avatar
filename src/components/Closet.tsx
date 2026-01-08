@@ -1,5 +1,6 @@
 import type { ClosetItem, Gender, TabKey } from "../types";
 import { useState, type ReactNode } from "react";
+import { getOccupationCoverImage } from "../data/occupationCoverImages";
 
 const emptyImg = new Image();
 emptyImg.src =
@@ -19,6 +20,12 @@ const ICON_MAPPINGS: Record<string, string> = {
   chef: "https://api.iconify.design/fluent-emoji-flat:chef.svg",
   police: "https://api.iconify.design/fluent-emoji-flat:police-officer.svg",
   artist: "https://api.iconify.design/fluent-emoji-flat:artist.svg",
+  astronaut: "https://api.iconify.design/fluent-emoji-flat:rocket.svg",
+  dentist: "https://api.iconify.design/fluent-emoji-flat:tooth.svg",
+  fireman: "https://api.iconify.design/fluent-emoji-flat:fire.svg",
+  musician: "https://api.iconify.design/fluent-emoji-flat:musical-note.svg",
+  nurse: "https://api.iconify.design/fluent-emoji-flat:health-worker.svg",
+  veterinarian: "https://api.iconify.design/fluent-emoji-flat:dog-face.svg",
 
   // Types
   hair: "https://api.iconify.design/fluent-emoji-flat:person-red-hair.svg",
@@ -102,33 +109,43 @@ export function Closet({
       <div className="closet card">
         {children && <div style={{ marginBottom: "1em" }}>{children}</div>}
         <div className="closetGrid">
-          {filterOptions!.map((key) => (
-            <div
-              className="closetItem"
-              key={key}
-              style={{ cursor: "pointer", borderStyle: "solid" }}
-              onClick={() => setSelectedFilter(key)}
-              tabIndex={0}
-              role="button"
-            >
-              <div className="closetPreview">
-                <img
-                  src={ICON_MAPPINGS[key] ?? ICON_MAPPINGS.other}
-                  alt={key}
-                  style={{
-                    width: "80%",
-                    height: "80%",
-                    objectFit: "contain",
-                    pointerEvents: "none",
-                    opacity: 0.83,
-                  }}
-                />
+          {filterOptions!.map((key) => {
+            // If filtering by occupation, try to use gender-specific cover image
+            const coverImage =
+              filterByOccupation && key !== "all"
+                ? getOccupationCoverImage(key, avatarGender)
+                : undefined;
+
+            const iconSrc = coverImage ?? ICON_MAPPINGS[key] ?? ICON_MAPPINGS.other;
+
+            return (
+              <div
+                className="closetItem"
+                key={key}
+                style={{ cursor: "pointer", borderStyle: "solid" }}
+                onClick={() => setSelectedFilter(key)}
+                tabIndex={0}
+                role="button"
+              >
+                <div className="closetPreview">
+                  <img
+                    src={iconSrc}
+                    alt={key}
+                    style={{
+                      width: "80%",
+                      height: "80%",
+                      objectFit: coverImage ? "cover" : "contain",
+                      pointerEvents: "none",
+                      opacity: coverImage ? 1 : 0.83,
+                    }}
+                  />
+                </div>
+                <div className="closetLabel" style={{ fontSize: 16 }}>
+                  {pretty(key)}
+                </div>
               </div>
-              <div className="closetLabel" style={{ fontSize: 16 }}>
-                {pretty(key)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );

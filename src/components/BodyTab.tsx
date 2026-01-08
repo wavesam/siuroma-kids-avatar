@@ -98,7 +98,6 @@ export function BodyTab(props: BodyTabProps) {
           tab={tab}
           placed={placed}
           setPlaced={setPlaced}
-          freelyDraggable={!snapItems}
           setDraggingPlacedId={setDraggingPlacedId}
           setIsHoveringTrash={setIsHoveringTrash}
           isHoveringTrash={isHoveringTrash}

@@ -60,7 +60,6 @@ export function BackgroundTab(props: BackgroundTabProps) {
           tab={tab}
           placed={placed}
           setPlaced={setPlaced}
-          freelyDraggable={!snapItems}
           setDraggingPlacedId={setDraggingPlacedId}
           setIsHoveringTrash={setIsHoveringTrash}
           isHoveringTrash={isHoveringTrash}
