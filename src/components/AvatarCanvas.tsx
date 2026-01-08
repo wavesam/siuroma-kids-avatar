@@ -36,7 +36,7 @@ function AvatarImage({
       style={{
         width: `${size}px`,
         height: "auto",
-        transform: `translateY(${offsetY}px)`,
+        transform: offsetY ? `translateY(${offsetY}px)` : undefined,
         objectFit: "contain",
         display: "block",
         pointerEvents: "none",
@@ -318,7 +318,7 @@ export function AvatarCanvas({
         overflow: "visible",
         touchAction: "none",
         zIndex: 100,
-        ...backgroundStyle, // apply wallpaper only on the canvas
+        ...backgroundStyle,
       }}
       onDragOver={(e) => {
         if (dragPlacingRef.current) {
@@ -342,7 +342,7 @@ export function AvatarCanvas({
           height: "auto",
           pointerEvents: "auto",
           zIndex: 200,
-          background: "transparent", // keep stage transparent to avoid misaligned gradients
+          background: "transparent",
         }}
         ref={avatarStageRef}
         onDragOver={(e) => {
@@ -374,7 +374,6 @@ export function AvatarCanvas({
           const left = xNorm * stageW;
           const top = yNorm * stageH;
 
-          // Skip drawing color-only background (already applied via canvas style)
           if (item.tab === "background" && item.color && !item.src) {
             return null;
           }
@@ -393,6 +392,7 @@ export function AvatarCanvas({
                 position: "absolute",
                 cursor: freelyDraggable ? "grab" : undefined,
                 pointerEvents: freelyDraggable ? "auto" : "none",
+                // FIX: Removed flex centering; background-position handles it now.
               }}
               onMouseDown={
                 freelyDraggable
@@ -411,17 +411,19 @@ export function AvatarCanvas({
                 }
               }}
             >
+              {/* FIX: Use div with background-image instead of img tag.
+                  This supports 'contain' scaling perfectly in html2canvas for 
+                  BOTH landscape (eyes) and portrait (dresses) items. */}
               {item.src ? (
-                <img
-                  src={item.src}
-                  alt={item.name}
-                  draggable={false}
+                <div
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "contain",
+                    backgroundImage: `url("${item.src}")`,
+                    backgroundSize: "contain",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
                     pointerEvents: "none",
-                    userSelect: "none",
                   }}
                 />
               ) : null}
