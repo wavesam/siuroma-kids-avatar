@@ -34,12 +34,10 @@ function withTab(items: ClosetItemDefinition[], tab: TabKey): ClosetItem[] {
 
 export const CLOSET_DATA_BY_TAB: Record<TabKey, ClosetItem[]> = {
   body: withTab(bodyClosetData, "body"),
-  // If these files still include `tab`, either update them to ClosetItemDefinition[] too,
-  // or keep the cast until you migrate them.
-  outfit: withTab(outfitClosetData as any, "outfit"),
-  accessories: withTab(accessoriesClosetData as any, "accessories"),
-  canvas: withTab(canvasClosetData as any, "canvas"),
-  background: withTab(backgroundClosetData as any, "background"),
+  outfit: withTab(outfitClosetData, "outfit"),
+  accessories: withTab(accessoriesClosetData, "accessories"),
+  canvas: withTab(canvasClosetData, "canvas"),
+  background: withTab(backgroundClosetData, "background"),
 };
 
 export const CLOSET = Object.values(CLOSET_DATA_BY_TAB).flat();

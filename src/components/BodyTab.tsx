@@ -1,37 +1,8 @@
-import React from "react";
 import { Closet } from "./Closet";
 import { AvatarCanvas } from "./AvatarCanvas";
-import type { ClosetItem, PlacedItem, Gender, TabKey } from "../types";
+import type { SharedTabProps } from "../types";
 
-interface BodyTabProps {
-  gender: Gender;
-  tab: TabKey;
-  placed: PlacedItem[];
-  setGender: (gender: Gender) => void;
-  setPlaced: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
-  setDraggingClosetId: (id: string | null) => void;
-  setDragPos: (pos: { x: number; y: number } | null) => void;
-  closet: ClosetItem[];
-  canvasWidth: number;
-  canvasHeight: number;
-  placeClosetItem: (
-    closetId: string,
-    tab: TabKey,
-    dropX?: number,
-    dropY?: number
-  ) => void;
-  snapItems: boolean;
-  showTrash: boolean;
-  removePlacedByClosetId: (closetId: string) => void;
-  setIsHoveringTrash: (b: boolean) => void;
-  isHoveringTrash: boolean;
-  setDraggingPlacedId: (id: string | null) => void;
-  draggingPlacedId: string | null;
-  removePlacedByInstanceId: (iid: string) => void;
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export function BodyTab(props: BodyTabProps) {
+export function BodyTab(props: SharedTabProps) {
   const {
     gender,
     tab,
@@ -50,11 +21,10 @@ export function BodyTab(props: BodyTabProps) {
     canvasRef,
   } = props;
 
-  const closetItems = closet.filter((item) => item.tab === "body");
-
+  // closet is already filtered by tab in AvatarStudio
   const typeOptions = [
     ...Array.from(
-      new Set(closetItems.map((item) => item.type).filter(Boolean) as string[])
+      new Set(closet.map((item) => item.type).filter(Boolean) as string[])
     ),
   ];
 
@@ -104,14 +74,13 @@ export function BodyTab(props: BodyTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
-          size={300}
         />
       </div>
       <div className="right" style={{ position: "relative", zIndex: 10 }}>
         <Closet
-          items={closetItems}
+          items={closet}
           avatarGender={gender}
-          tab="body"
+          tab={tab}
           onStartDrag={(id) => {
             setDraggingClosetId(id);
             setDragPos(null);

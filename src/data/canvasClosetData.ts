@@ -1,5 +1,5 @@
-import type { ClosetItem } from "../types";
+import type { ClosetItemDefinition } from "../types";
 
-export const canvasClosetData: ClosetItem[] = [
+export const canvasClosetData: ClosetItemDefinition[] = [
   // Add canvas/prop items here
 ];

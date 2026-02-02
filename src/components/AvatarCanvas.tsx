@@ -1,5 +1,7 @@
 import React from "react";
 import type { PlacedItem, Gender, TabKey } from "../types";
+import { usePlacedItemDrag } from "../hooks/usePlacedItemDrag";
+import { DRAWING_LAYER_ID, AVATAR_DISPLAY_SIZE } from "../constants";
 import boyAvatar from "../assets/boys only/body/boy body.png";
 import girlAvatar from "../assets/girls only/body/girl body.png";
 
@@ -13,8 +15,6 @@ type PlacedWithNorm = PlacedItem & {
   src?: string;
 };
 
-const DRAWING_LAYER_ID = "drawing-layer";
-
 function AvatarImage({
   gender,
   size,
@@ -24,12 +24,7 @@ function AvatarImage({
   size: number;
   offsetY: number;
 }) {
-  const src =
-    gender === "male"
-      ? boyAvatar
-      : typeof girlAvatar === "string"
-      ? girlAvatar
-      : girlAvatar;
+  const src = gender === "male" ? boyAvatar : girlAvatar;
 
   return (
     <img
@@ -48,10 +43,30 @@ function AvatarImage({
   );
 }
 
+interface AvatarCanvasProps {
+  gender: Gender;
+  tab: TabKey;
+  size?: number;
+  offsetY?: number;
+  placed: PlacedItem[];
+  setPlaced?: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
+  setDraggingPlacedId?: (id: string | null) => void;
+  setIsHoveringTrash?: (b: boolean) => void;
+  isHoveringTrash?: boolean;
+  removePlacedByInstanceId?: (id: string) => void;
+  placeClosetItem?: (
+    closetId: string,
+    tab: TabKey,
+    dropX?: number,
+    dropY?: number
+  ) => void;
+  snapItems?: boolean;
+}
+
 export function AvatarCanvas({
   gender,
   tab,
-  size = 200,
+  size = AVATAR_DISPLAY_SIZE,
   offsetY = 0,
   placed,
   setPlaced,
@@ -61,50 +76,40 @@ export function AvatarCanvas({
   removePlacedByInstanceId,
   placeClosetItem,
   snapItems,
-}: {
-  gender: Gender;
-  tab: TabKey;
-  size?: number;
-  offsetY?: number;
-  placed: PlacedItem[];
-  freelyDraggable?: boolean;
-  setPlaced?: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
-  setDraggingPlacedId?: (iid: string | null) => void;
-  setIsHoveringTrash?: (b: boolean) => void;
-  isHoveringTrash?: boolean;
-  removePlacedByInstanceId?: (iid: string) => void;
-  placeClosetItem?: (
-    closetId: string,
-    tab: TabKey,
-    dropX?: number,
-    dropY?: number
-  ) => void;
-  snapItems?: boolean;
-}) {
-  const [stageSize, setStageSize] = React.useState<{
-    width: number;
-    height: number;
-  }>({
-    width: size,
-    height: size,
-  });
-
+}: AvatarCanvasProps) {
+  const [stageSize, setStageSize] = React.useState({ width: size, height: size });
   const avatarStageRef = React.useRef<HTMLDivElement | null>(null);
   const avatarCanvasRef = React.useRef<HTMLDivElement | null>(null);
+  const isProcessingDropRef = React.useRef(false);
 
+  const getStageRect = React.useCallback(
+    () => avatarStageRef.current?.getBoundingClientRect() ?? null,
+    []
+  );
+
+  // Use the extracted drag hook
+  const { dragPlacingRef, onMouseDown } = usePlacedItemDrag({
+    placed,
+    setPlaced,
+    setDraggingPlacedId,
+    setIsHoveringTrash,
+    isHoveringTrash,
+    removePlacedByInstanceId,
+    snapItems,
+    getStageRect,
+  });
+
+  // Extract background item
   const backgroundItem = [...placed]
     .filter((p) => p.tab === "background")
     .pop() as PlacedWithNorm | undefined;
 
-  // Support both color and image backgrounds
   const background = backgroundItem?.color;
   const backgroundImage = backgroundItem?.src
     ? `url("${backgroundItem.src}")`
     : undefined;
-
   const backgroundSize =
     backgroundItem?.backgroundSize ?? (backgroundImage ? "cover" : "auto");
-
   const backgroundRepeat =
     backgroundItem?.backgroundRepeat ??
     (backgroundImage ? "no-repeat" : backgroundSize ? "repeat" : "no-repeat");
@@ -113,6 +118,7 @@ export function AvatarCanvas({
     | PlacedWithNorm
     | undefined;
 
+  // Track stage size for rendering
   React.useLayoutEffect(() => {
     const el = avatarStageRef.current;
     if (!el) return;
@@ -126,172 +132,18 @@ export function AvatarCanvas({
     return () => ro.disconnect();
   }, []);
 
-  const getStageRect = () =>
-    avatarStageRef.current?.getBoundingClientRect() ?? null;
-
-  const [dragPlacing, setDragPlacing] = React.useState<{
-    id: string;
-    offsetXRatio: number;
-    offsetYRatio: number;
-  } | null>(null);
-
-  const dragPlacingRef = React.useRef<{
-    id: string;
-    offsetXRatio: number;
-    offsetYRatio: number;
-  } | null>(null);
-
-  const onMouseDown = (
-    id: string,
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>
-  ) => {
-    if (id === DRAWING_LAYER_ID) return;
-
-    if (!setDraggingPlacedId) return;
-    const rect = getStageRect();
-    if (!rect) return;
-
-    const item = placed.find((it) => it.instanceId === id) as
-      | PlacedWithNorm
-      | undefined;
-    if (!item) return;
-
-    // ✅ Check both tab-level and item-level snapItems
-    // If tab snapItems is true, all items are non-draggable
-    // If tab snapItems is false, check item's snapItems (must be false to be draggable)
-    const tabSnapItems = snapItems ?? false;
-    const itemSnapItems = item.snapItems ?? false;
-    if (tabSnapItems || itemSnapItems) return; // Not draggable if tab is true OR item is true
-
-    const xNorm = item.xNorm ?? item.x / rect.width;
-    const yNorm = item.yNorm ?? item.y / rect.height;
-
-    const renderX = xNorm * rect.width;
-    const renderY = yNorm * rect.height;
-
-    const offsetXRatio = (e.clientX - (rect.left + renderX)) / rect.width;
-    const offsetYRatio = (e.clientY - (rect.top + renderY)) / rect.height;
-
-    const dragInfo = { id, offsetXRatio, offsetYRatio };
-    dragPlacingRef.current = dragInfo;
-    setDragPlacing(dragInfo);
-    setDraggingPlacedId?.(id);
-
-    document.body.style.cursor = "grabbing";
-    e.stopPropagation();
-    e.preventDefault();
-  };
-
-  React.useEffect(() => {
-    if (!dragPlacing) return;
-
-    function onMouseMove(e: MouseEvent) {
-      if (!setPlaced || !avatarStageRef.current || !dragPlacing) return;
-      const rect = getStageRect();
-      if (!rect) return;
-
-      const pointerXRatio = (e.clientX - rect.left) / rect.width;
-      const pointerYRatio = (e.clientY - rect.top) / rect.height;
-
-      const newXNorm = pointerXRatio - dragPlacing.offsetXRatio;
-      const newYNorm = pointerYRatio - dragPlacing.offsetYRatio;
-
-      setPlaced((current) =>
-        current.map((raw) => {
-          if (raw.instanceId !== dragPlacing.id) return raw;
-          const item = raw as PlacedWithNorm;
-          const xNorm = newXNorm;
-          const yNorm = newYNorm;
-          const sizeNorm =
-            item.sizeNorm ?? (item.size ? item.size / rect.width : 0);
-
-          return {
-            ...item,
-            xNorm,
-            yNorm,
-            sizeNorm,
-            x: xNorm * rect.width,
-            y: yNorm * rect.height,
-            size: sizeNorm * rect.width,
-          };
-        })
-      );
-
-      if (setIsHoveringTrash) {
-        const trash = document.querySelector(".trashCan") as HTMLElement | null;
-        if (trash) {
-          const tRect = trash.getBoundingClientRect();
-          setIsHoveringTrash(
-            e.clientX >= tRect.left &&
-              e.clientX <= tRect.right &&
-              e.clientY >= tRect.top &&
-              e.clientY <= tRect.bottom
-          );
-        }
-      }
-    }
-
-    function onMouseUp() {
-      if (
-        isHoveringTrash &&
-        removePlacedByInstanceId &&
-        dragPlacingRef.current
-      ) {
-        removePlacedByInstanceId(dragPlacingRef.current.id);
-      }
-
-      setDraggingPlacedId?.(null);
-      dragPlacingRef.current = null;
-      setDragPlacing(null);
-      document.body.style.cursor = "";
-      setIsHoveringTrash?.(false);
-    }
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [
-    dragPlacing,
-    setPlaced,
-    setDraggingPlacedId,
-    setIsHoveringTrash,
-    isHoveringTrash,
-    removePlacedByInstanceId,
-  ]);
-
-  const isProcessingDropRef = React.useRef(false);
-
   const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
 
-    if (isProcessingDropRef.current) return;
-    if (dragPlacingRef.current) return;
-    if (!placeClosetItem) return;
+    if (isProcessingDropRef.current || dragPlacingRef.current || !placeClosetItem) return;
 
     const id =
       e.dataTransfer.getData("application/x-avatar-item-id") ||
       e.dataTransfer.getData("text/plain");
-
     if (!id) return;
 
-    // For items that use snap (snapItems=true), allow replacement of same type
-    // For items that are freely draggable (snapItems=false), check if already placed
-    // Since we don't have the item data here, use the snapItems prop as fallback
-    if (!snapItems) {
-      const isAlreadyPlaced = placed.some((item) => item.id === id);
-      if (isAlreadyPlaced) return;
-    }
-
-    const hasClosetMimeType = e.dataTransfer.types.includes(
-      "application/x-avatar-item-id"
-    );
-    if (!hasClosetMimeType && e.dataTransfer.getData("text/plain")) {
-      const textId = e.dataTransfer.getData("text/plain");
-      if (placed.some((item) => item.id === textId)) return;
-    }
+    // For snap items, allow replacement; for free items, prevent duplicates
+    if (!snapItems && placed.some((item) => item.id === id)) return;
 
     const stageRect = getStageRect();
     const canvasRect = avatarCanvasRef.current?.getBoundingClientRect();
@@ -302,17 +154,15 @@ export function AvatarCanvas({
       e.clientX <= canvasRect.right &&
       e.clientY >= canvasRect.top &&
       e.clientY <= canvasRect.bottom;
-
     if (!isOverCanvas) return;
-
-    const x = e.clientX - stageRect.left;
-    const y = e.clientY - stageRect.top;
 
     isProcessingDropRef.current = true;
 
     if (snapItems) {
       placeClosetItem(id, tab);
     } else {
+      const x = e.clientX - stageRect.left;
+      const y = e.clientY - stageRect.top;
       placeClosetItem(id, tab, x, y);
     }
 
@@ -321,7 +171,16 @@ export function AvatarCanvas({
     }, 100);
   };
 
-  // Background style applied to the canvas container (not as a placed item)
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
+    if (dragPlacingRef.current) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "none";
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
   const backgroundStyle =
     backgroundImage || background != null
       ? {
@@ -345,18 +204,10 @@ export function AvatarCanvas({
         zIndex: 100,
         ...backgroundStyle,
       }}
-      onDragOver={(e) => {
-        if (dragPlacingRef.current) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "none";
-          return;
-        }
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-      }}
+      onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {drawingLayer?.src ? (
+      {drawingLayer?.src && (
         <div
           style={{
             position: "absolute",
@@ -369,10 +220,11 @@ export function AvatarCanvas({
             backgroundSize: "100% 100%",
           }}
         />
-      ) : null}
+      )}
 
       <div
         className="avatarStage"
+        ref={avatarStageRef}
         style={{
           position: "absolute",
           left: "50%",
@@ -384,43 +236,26 @@ export function AvatarCanvas({
           zIndex: 200,
           background: "transparent",
         }}
-        ref={avatarStageRef}
-        onDragOver={(e) => {
-          if (dragPlacingRef.current) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "none";
-            return;
-          }
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "copy";
-        }}
+        onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
         <AvatarImage gender={gender} size={size} offsetY={0} />
 
         {placed.map((raw) => {
           const item = raw as PlacedWithNorm;
-          if (item.id === DRAWING_LAYER_ID) return null;
-
-          // Background item is not rendered as a placed item
-          if (item.tab === "background") return null;
+          if (item.id === DRAWING_LAYER_ID || item.tab === "background") return null;
 
           const stageW = stageSize.width || size;
           const stageH = stageSize.height || size;
 
-          const sizeNorm =
-            item.sizeNorm ?? (item.size ? item.size / stageW : 0);
+          const sizeNorm = item.sizeNorm ?? (item.size ? item.size / stageW : 0);
           const xNorm = item.xNorm ?? (item.x ?? 0) / stageW;
           const yNorm = item.yNorm ?? (item.y ?? 0) / stageH;
 
           const renderW = sizeNorm * stageW;
-          const renderH = renderW;
-
           const left = xNorm * stageW;
           const top = yNorm * stageH;
 
-          // ✅ Check both tab-level and item-level snapItems
-          // Item is draggable only if: tab snapItems is false AND item snapItems is false
           const tabSnapItems = snapItems ?? false;
           const itemSnapItems = item.snapItems ?? false;
           const isItemDraggable = !tabSnapItems && !itemSnapItems;
@@ -434,19 +269,13 @@ export function AvatarCanvas({
                 left: `${left}px`,
                 top: `${top}px`,
                 width: `${renderW}px`,
-                height: `${renderH}px`,
+                height: `${renderW}px`,
                 zIndex: item.z ?? 1,
                 position: "absolute",
                 cursor: isItemDraggable ? "grab" : undefined,
                 pointerEvents: isItemDraggable ? "auto" : "none",
               }}
-              onMouseDown={
-                isItemDraggable
-                  ? (e) => {
-                      onMouseDown(item.instanceId, e);
-                    }
-                  : undefined
-              }
+              onMouseDown={isItemDraggable ? (e) => onMouseDown(item.instanceId, e) : undefined}
               onDragStart={(e) => {
                 if (isItemDraggable || dragPlacingRef.current) {
                   e.preventDefault();
@@ -457,7 +286,7 @@ export function AvatarCanvas({
                 }
               }}
             >
-              {item.src ? (
+              {item.src && (
                 <div
                   style={{
                     width: "100%",
@@ -469,7 +298,7 @@ export function AvatarCanvas({
                     pointerEvents: "none",
                   }}
                 />
-              ) : null}
+              )}
             </div>
           );
         })}

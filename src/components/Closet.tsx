@@ -21,8 +21,7 @@ function getBackgroundPreviewStyle(it: ClosetItem) {
     it.src && typeof it.src === "string" && it.src.trim().length > 0;
 
   // 2. Check if we have a valid color/gradient
-  // We cast to any because 'color' might not be on the base ClosetItem type strictly
-  const bg = (it as any).color as string | undefined;
+  const bg = it.color;
   const hasColor = bg && bg.trim().length > 0;
 
   // If we have an image, prioritize it

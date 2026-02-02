@@ -1,33 +1,8 @@
-import React from "react";
 import { Closet } from "./Closet";
 import { AvatarCanvas } from "./AvatarCanvas";
-import type { ClosetItem, PlacedItem, Gender, TabKey } from "../types";
+import type { SharedTabProps } from "../types";
 
-interface BackgroundTabProps {
-  gender: Gender;
-  tab: TabKey;
-  placed: PlacedItem[];
-  setPlaced: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
-  setDraggingClosetId: (id: string | null) => void;
-  setDragPos: (pos: { x: number; y: number } | null) => void;
-  closet: ClosetItem[];
-  canvasWidth: number;
-  canvasHeight: number;
-  placeClosetItem: (
-    closetId: string,
-    tab: TabKey,
-    dropX?: number,
-    dropY?: number
-  ) => void;
-  snapItems: boolean;
-  setDraggingPlacedId: (id: string | null) => void;
-  setIsHoveringTrash: (b: boolean) => void;
-  isHoveringTrash: boolean;
-  removePlacedByInstanceId: (iid: string) => void;
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export function BackgroundTab(props: BackgroundTabProps) {
+export function BackgroundTab(props: SharedTabProps) {
   const {
     gender,
     tab,
@@ -45,8 +20,7 @@ export function BackgroundTab(props: BackgroundTabProps) {
     canvasRef,
   } = props;
 
-  // Background options now come purely from data (backgroundClosetData via closetData.ts)
-  const filteredCloset = closet.filter((item) => item.tab === "background");
+  // closet is already filtered by tab in AvatarStudio
 
   return (
     <div className="studioBody">
@@ -66,15 +40,14 @@ export function BackgroundTab(props: BackgroundTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
-          size={300}
         />
       </div>
 
       <div className="right" style={{ position: "relative", zIndex: 10 }}>
         <Closet
-          items={filteredCloset}
+          items={closet}
           avatarGender={gender}
-          tab="background"
+          tab={tab}
           onStartDrag={(id) => {
             setDraggingClosetId(id);
             setDragPos(null);

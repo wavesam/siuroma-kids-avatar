@@ -83,3 +83,43 @@ export interface PlacedItem extends ClosetItem {
   /** Optional color override. */
   color?: string;
 }
+
+// ------------------------------------------------------------------
+// Shared Component Props
+// ------------------------------------------------------------------
+
+/**
+ * Common props passed from AvatarStudio to all tab components.
+ * Centralizes the interface to avoid duplication across tabs.
+ */
+export interface SharedTabProps {
+  gender: Gender;
+  setGender: (gender: Gender) => void;
+  tab: TabKey;
+  placed: PlacedItem[];
+  setPlaced: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
+  setDraggingClosetId: (id: string | null) => void;
+  setDragPos: (pos: { x: number; y: number } | null) => void;
+  draggingClosetId: string | null;
+  dragPos: { x: number; y: number } | null;
+  topZ: number;
+  setTopZ: React.Dispatch<React.SetStateAction<number>>;
+  closet: ClosetItem[];
+  canvasWidth: number;
+  canvasHeight: number;
+  placeClosetItem: (
+    closetId: string,
+    tab: TabKey,
+    dropX?: number,
+    dropY?: number
+  ) => void;
+  snapItems: boolean;
+  showTrash: boolean;
+  removePlacedByClosetId: (closetId: string) => void;
+  setIsHoveringTrash: (b: boolean) => void;
+  isHoveringTrash: boolean;
+  setDraggingPlacedId: (id: string | null) => void;
+  draggingPlacedId: string | null;
+  removePlacedByInstanceId: (instanceId: string) => void;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
+}

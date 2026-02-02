@@ -1,35 +1,8 @@
-import React from "react";
-import type { ClosetItem, Gender, PlacedItem, TabKey } from "../types";
+import type { SharedTabProps } from "../types";
 import { Closet } from "./Closet";
 import { AvatarCanvas } from "./AvatarCanvas";
 
-interface OutfitTabProps {
-  gender: Gender;
-  tab: TabKey;
-  placed: PlacedItem[];
-  setPlaced: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
-  setDraggingClosetId: (id: string | null) => void;
-  setDragPos: (pos: { x: number; y: number } | null) => void;
-  closet: ClosetItem[];
-  canvasWidth: number;
-  canvasHeight: number;
-  placeClosetItem: (
-    closetId: string,
-    tab: TabKey,
-    dropX?: number,
-    dropY?: number
-  ) => void;
-  snapItems: boolean;
-  setDraggingPlacedId: (iid: string | null) => void;
-  setIsHoveringTrash: (b: boolean) => void;
-  isHoveringTrash: boolean;
-  removePlacedByInstanceId: (iid: string) => void;
-
-  // FIX: Add canvasRef prop
-  canvasRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export function OutfitTab(props: OutfitTabProps) {
+export function OutfitTab(props: SharedTabProps) {
   const {
     gender,
     tab,
@@ -44,13 +17,12 @@ export function OutfitTab(props: OutfitTabProps) {
     setIsHoveringTrash,
     isHoveringTrash,
     removePlacedByInstanceId,
-    canvasRef, // FIX: Destructure canvasRef
+    canvasRef,
   } = props;
 
-  const closetItems = closet.filter((item) => item.tab === "outfit");
-
+  // closet is already filtered by tab in AvatarStudio
   // DETECT STRATEGY: Do any items here have an occupation?
-  const hasOccupation = closetItems.some((item) => !!item.occupation);
+  const hasOccupation = closet.some((item) => !!item.occupation);
 
   let filterOptions: string[] = [];
 
@@ -58,9 +30,7 @@ export function OutfitTab(props: OutfitTabProps) {
     // Strategy A: Filter by Occupation
     filterOptions = [
       ...Array.from(
-        new Set(
-          closetItems.map((i) => i.occupation).filter(Boolean) as string[]
-        )
+        new Set(closet.map((i) => i.occupation).filter(Boolean) as string[])
       ),
     ];
   } else {
@@ -68,7 +38,7 @@ export function OutfitTab(props: OutfitTabProps) {
     filterOptions = [
       "all",
       ...Array.from(
-        new Set(closetItems.map((i) => i.type).filter(Boolean) as string[])
+        new Set(closet.map((i) => i.type).filter(Boolean) as string[])
       ),
     ];
   }
@@ -92,15 +62,14 @@ export function OutfitTab(props: OutfitTabProps) {
           removePlacedByInstanceId={removePlacedByInstanceId}
           placeClosetItem={placeClosetItem}
           snapItems={snapItems}
-          size={300}
         />
       </div>
 
       <div className="right" style={{ position: "relative", zIndex: 10 }}>
         <Closet
-          items={closetItems}
+          items={closet}
           avatarGender={gender}
-          tab="outfit"
+          tab={tab}
           onStartDrag={(id) => {
             setDraggingClosetId(id);
             setDragPos(null);
@@ -110,7 +79,7 @@ export function OutfitTab(props: OutfitTabProps) {
             setDragPos(null);
           }}
           filterOptions={filterOptions}
-          filterByOccupation={hasOccupation} // Tell Closet which logic to use
+          filterByOccupation={hasOccupation}
         />
       </div>
     </div>

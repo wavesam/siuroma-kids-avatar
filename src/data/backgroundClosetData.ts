@@ -1,4 +1,4 @@
-import type { ClosetItem } from "../types";
+import type { ClosetItemDefinition } from "../types";
 
 import bgLinkPurple from "../assets/backgrounds/link_purple.png";
 import byLinkYellow from "../assets/backgrounds/link_yellow.png";
@@ -39,11 +39,10 @@ import bgTriangleYellow from "../assets/backgrounds/triangle_yellow.png";
  * - No `backgroundSize`
  * - No `repeating-linear-gradient(...)`
  */
-export const backgroundClosetData: ClosetItem[] = [
+export const backgroundClosetData: ClosetItemDefinition[] = [
   {
     id: "bg-link-purple",
     name: "Link Purple",
-    tab: "background",
     gender: "unisex",
     src: bgLinkPurple,
     color: "#ffffff",
@@ -51,7 +50,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-link-yellow",
     name: "Link Yellow",
-    tab: "background",
     gender: "unisex",
     src: byLinkYellow,
     color: "#ffffff",
@@ -59,7 +57,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-paper-frame",
     name: "Paper Frame",
-    tab: "background",
     gender: "unisex",
     src: bgPaperFrame,
     color: "#ffffff",
@@ -67,7 +64,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-paper-white",
     name: "Paper White",
-    tab: "background",
     gender: "unisex",
     src: bgPaperWhite,
     color: "#ffffff",
@@ -75,7 +71,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-paper-yellow",
     name: "Paper Yellow",
-    tab: "background",
     gender: "unisex",
     src: bgPaperYellow,
     color: "#ffffff",
@@ -83,7 +78,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-rainbow",
     name: "Rainbow",
-    tab: "background",
     gender: "unisex",
     src: bgRainbow,
     color: "#ffffff",
@@ -91,7 +85,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-star-yellow",
     name: "Star Yellow",
-    tab: "background",
     gender: "unisex",
     src: bgStarYellow,
     color: "#ffffff",
@@ -99,7 +92,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-star",
     name: "Star",
-    tab: "background",
     gender: "unisex",
     src: bgStar,
     color: "#ffffff",
@@ -107,7 +99,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-triangle-blue",
     name: "Triangle Blue",
-    tab: "background",
     gender: "unisex",
     src: bgTriangleBlue,
     color: "#ffffff",
@@ -115,7 +106,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-triangle-green",
     name: "Triangle Green",
-    tab: "background",
     gender: "unisex",
     src: bgTriangleGreen,
     color: "#ffffff",
@@ -123,7 +113,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-triangle-orange",
     name: "Triangle Orange",
-    tab: "background",
     gender: "unisex",
     src: bgTriangleOrange,
     color: "#ffffff",
@@ -131,7 +120,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-triangle-pink",
     name: "Triangle Pink",
-    tab: "background",
     gender: "unisex",
     src: bgTrianglePink,
     color: "#ffffff",
@@ -139,7 +127,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-triangle-purple",
     name: "Triangle Purple",
-    tab: "background",
     gender: "unisex",
     src: bgTrianglePurple,
     color: "#ffffff",
@@ -147,7 +134,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-triangle-yellow",
     name: "Triangle Yellow",
-    tab: "background",
     gender: "unisex",
     src: bgTriangleYellow,
     color: "#ffffff",
@@ -157,7 +143,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-white",
     name: "White",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#ffffff",
@@ -165,7 +150,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-black",
     name: "Black",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#000000",
@@ -173,7 +157,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-slate",
     name: "Slate",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#0f172a",
@@ -181,7 +164,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-sky-blue",
     name: "Sky blue",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#93c5fd",
@@ -189,7 +171,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-mint",
     name: "Mint",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#a7f3d0",
@@ -197,7 +178,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-pink",
     name: "Pink",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#fbcfe8",
@@ -205,7 +185,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-lavender",
     name: "Lavender",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#e9d5ff",
@@ -213,7 +192,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-cream",
     name: "Cream",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "#fef3c7",
@@ -223,7 +201,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-sky-gradient",
     name: "Sky gradient",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "linear-gradient(180deg, #93c5fd 0%, #e0f2fe 60%, #ffffff 100%)",
@@ -231,7 +208,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-sunset-gradient",
     name: "Sunset gradient",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "linear-gradient(180deg, #fb7185 0%, #fdba74 45%, #fef3c7 100%)",
@@ -239,7 +215,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-ocean-gradient",
     name: "Ocean gradient",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "linear-gradient(180deg, #0ea5e9 0%, #2563eb 55%, #0f172a 100%)",
@@ -247,7 +222,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-aurora-gradient",
     name: "Aurora gradient",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "linear-gradient(135deg, #22c55e 0%, #06b6d4 45%, #6366f1 100%)",
@@ -255,7 +229,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-peach-gradient",
     name: "Peach gradient",
-    tab: "background",
     gender: "unisex",
     src: "",
     color: "linear-gradient(135deg, #fed7aa 0%, #fbcfe8 55%, #e9d5ff 100%)",
@@ -263,7 +236,6 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-radial-soft-glow",
     name: "Soft glow",
-    tab: "background",
     gender: "unisex",
     src: "",
     color:
@@ -272,19 +244,9 @@ export const backgroundClosetData: ClosetItem[] = [
   {
     id: "bg-purple-haze",
     name: "Purple haze",
-    tab: "background",
     gender: "unisex",
     src: "",
     color:
       "radial-gradient(circle at 20% 20%, rgba(192,132,252,0.85) 0%, transparent 45%), radial-gradient(circle at 75% 60%, rgba(147,197,253,0.75) 0%, transparent 40%), #0f172a",
   },
-
-  // Image example (uncomment after adding an import):
-  // {
-  //   id: "bg-my-photo",
-  //   name: "My photo",
-  //   tab: "background",
-  //   gender: "unisex",
-  //   src: myBg,
-  // },
 ];

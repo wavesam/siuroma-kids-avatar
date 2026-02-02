@@ -1,35 +1,13 @@
 import React from "react";
 import { AvatarCanvas } from "./AvatarCanvas";
 import { Closet } from "./Closet";
-import type { PlacedItem, Gender, TabKey, ClosetItem } from "../types";
+import type { SharedTabProps } from "../types";
+import { DRAWING_LAYER_ID, MAX_DRAWING_HISTORY } from "../constants";
 import "./CanvasTab.css";
 
-interface CanvasTabProps {
-  gender: Gender;
-  tab: TabKey;
-  placed: PlacedItem[];
-  setPlaced: React.Dispatch<React.SetStateAction<PlacedItem[]>>;
-  setDraggingClosetId: (id: string | null) => void;
-  setDragPos: (pos: { x: number; y: number } | null) => void;
-  closet: ClosetItem[];
-  canvasWidth: number;
-  canvasHeight: number;
-  placeClosetItem: (
-    closetId: string,
-    tab: TabKey,
-    dropX?: number,
-    dropY?: number
-  ) => void;
-  snapItems: boolean;
-  setDraggingPlacedId: (id: string | null) => void;
-  setIsHoveringTrash: (b: boolean) => void;
-  isHoveringTrash: boolean;
-  removePlacedByInstanceId: (iid: string) => void;
-
+interface CanvasTabProps extends SharedTabProps {
   avatarCanvasRef: React.RefObject<HTMLDivElement | null>;
   drawingCanvasRef: React.RefObject<HTMLCanvasElement | null>;
-
-  // History stored as PNG data URLs
   drawingHistoryRef: React.MutableRefObject<string[]>;
   drawingHistoryIndexRef: React.MutableRefObject<number>;
 }
@@ -42,9 +20,6 @@ type BrushStyle =
   | "calligraphy"
   | "neon"
   | "dashed";
-
-const DRAWING_LAYER_ID = "drawing-layer";
-const MAX_HISTORY = 50;
 
 export function CanvasTab(props: CanvasTabProps) {
   const {
@@ -204,7 +179,7 @@ export function CanvasTab(props: CanvasTabProps) {
         drawingHistoryRef.current.push(dataUrl);
         drawingHistoryIndexRef.current = drawingHistoryRef.current.length - 1;
 
-        if (drawingHistoryRef.current.length > MAX_HISTORY) {
+        if (drawingHistoryRef.current.length > MAX_DRAWING_HISTORY) {
           drawingHistoryRef.current.shift();
           drawingHistoryIndexRef.current = Math.max(
             0,
@@ -860,7 +835,6 @@ export function CanvasTab(props: CanvasTabProps) {
           <AvatarCanvas
             gender={gender}
             tab={tab}
-            size={300}
             offsetY={0}
             placed={placedWithoutDrawing}
             setPlaced={setPlaced}
@@ -890,7 +864,7 @@ export function CanvasTab(props: CanvasTabProps) {
 
       <div className="right">
         <Closet
-          items={closet.filter((it) => it.tab === tab)}
+          items={closet}
           avatarGender={gender}
           tab={tab}
           onStartDrag={(id) => setDraggingClosetId(id)}

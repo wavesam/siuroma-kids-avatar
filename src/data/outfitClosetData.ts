@@ -1,4 +1,4 @@
-import type { ClosetItem } from "../types";
+import type { ClosetItemDefinition } from "../types";
 
 // Boys Only Imports
 import boySinger from "../assets/boys only/outfit/singer_clothes_b.png";
@@ -16,7 +16,7 @@ import girlFashionDesigner from "../assets/girls only/outfit/fashion_designer_cl
 import girlTeacher from "../assets/girls only/outfit/teacher_clothes_g.png";
 import girlPilot from "../assets/girls only/outfit/pilot_clothes_g.png";
 
-export const outfitClosetData: ClosetItem[] = [
+export const outfitClosetData: ClosetItemDefinition[] = [
   // Boys Outfits
   {
     id: "boySinger",
@@ -24,7 +24,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: boySinger,
     gender: "male",
-    tab: "outfit",
     occupation: "musician",
   },
   {
@@ -33,7 +32,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: boyYoutuber,
     gender: "male",
-    tab: "outfit",
     occupation: "youtuber",
   },
   {
@@ -42,7 +40,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "hat",
     src: boyYoutuberHeadphone,
     gender: "male",
-    tab: "outfit",
     occupation: "youtuber",
   },
   {
@@ -51,7 +48,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: boyFashionDesigner,
     gender: "male",
-    tab: "outfit",
     occupation: "fashion",
   },
   {
@@ -60,7 +56,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: boyTeacher,
     gender: "male",
-    tab: "outfit",
     occupation: "teacher",
   },
   {
@@ -69,7 +64,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: boyPilot,
     gender: "male",
-    tab: "outfit",
     occupation: "pilot",
   },
   // Girls Outfits
@@ -79,7 +73,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: girlSinger,
     gender: "female",
-    tab: "outfit",
     occupation: "musician",
   },
   {
@@ -88,7 +81,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: girlYoutuber,
     gender: "female",
-    tab: "outfit",
     occupation: "youtuber",
   },
   {
@@ -97,7 +89,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "hat",
     src: girlYoutuberHeadphone,
     gender: "female",
-    tab: "outfit",
     occupation: "youtuber",
   },
   {
@@ -106,7 +97,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: girlFashionDesigner,
     gender: "female",
-    tab: "outfit",
     occupation: "fashion",
   },
   {
@@ -115,7 +105,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: girlTeacher,
     gender: "female",
-    tab: "outfit",
     occupation: "teacher",
   },
   {
@@ -124,7 +113,6 @@ export const outfitClosetData: ClosetItem[] = [
     type: "shirt",
     src: girlPilot,
     gender: "female",
-    tab: "outfit",
     occupation: "pilot",
   },
 ];

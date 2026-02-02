@@ -15,6 +15,13 @@ import type {
   ClosetItemType,
 } from "../types";
 import { CLOSET_DATA_BY_TAB, SNAP_CONFIG } from "../data/closetData";
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  CANVAS_ASPECT,
+  LAYOUT_MARGIN,
+  HEADER_RESERVE,
+} from "../constants";
 import { OutfitTab } from "./OutfitTab";
 import { BodyTab } from "./BodyTab";
 import { AccessoriesTab } from "./AccessoriesTab";
@@ -23,10 +30,6 @@ import { BackgroundTab } from "./BackgroundTab";
 import { exportCanvasToImage, downloadImage } from "../utils/exportCanvas";
 
 // --- Constants ---
-
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 800;
-const CANVAS_ASPECT = CANVAS_WIDTH / CANVAS_HEIGHT;
 
 const TABS: { key: TabKey; label: string; number: number }[] = [
   { key: "body", label: "Body", number: 1 },
@@ -118,7 +121,6 @@ export function AvatarStudio() {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
   });
-  const prevCanvasSizeRef = useRef(canvasSize);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   // Drawing / Preview State
@@ -131,16 +133,13 @@ export function AvatarStudio() {
   // --- Resize Logic ---
 
   useLayoutEffect(() => {
-    const MARGIN = 48;
-    const HEADER_RESERVE = 220;
-
     const updateSize = () => {
       const vv = window.visualViewport;
       const vpW = vv?.width ?? window.innerWidth;
       const vpH = vv?.height ?? window.innerHeight;
 
-      const maxWidth = Math.max(320, vpW - MARGIN * 2);
-      const maxHeight = Math.max(320, vpH - HEADER_RESERVE - MARGIN * 2);
+      const maxWidth = Math.max(320, vpW - LAYOUT_MARGIN * 2);
+      const maxHeight = Math.max(320, vpH - HEADER_RESERVE - LAYOUT_MARGIN * 2);
 
       const widthByHeight = maxHeight * CANVAS_ASPECT;
 
@@ -173,60 +172,52 @@ export function AvatarStudio() {
     };
   }, []);
 
-  // --- Normalization Logic (On Resize) ---
-
-  useEffect(() => {
-    const prev = prevCanvasSizeRef.current;
-    const prevW = prev.width || 1;
-    const prevH = prev.height || 1;
-
-    setPlaced((current) =>
-      current.map((p) => {
-        // Always center and fill background
-        if (p.tab === "background") {
-          return {
-            ...p,
-            x: canvasSize.width / 2,
-            y: canvasSize.height / 2,
-            size: canvasSize.width,
-            xNorm: 0,
-            yNorm: 0,
-            sizeNorm: 1,
-            z: 0,
-          };
-        }
-
-        if (p.id === "drawing-layer") {
-          return { ...p, size: canvasSize.width, x: 0, y: 0 };
-        }
-
-        // Calculate normalized values if missing, or use existing to scale to new px
-        const baseSizeFromType =
-          p.type && SNAP_CONFIG[p.type] ? SNAP_CONFIG[p.type].size : undefined;
-
-        const sizeNorm =
-          p.sizeNorm ??
-          (typeof baseSizeFromType === "number"
-            ? baseSizeFromType / CANVAS_WIDTH
-            : (p.size ?? 0) / prevW);
-
-        const xNorm = p.xNorm ?? (p.x ?? 0) / prevW;
-        const yNorm = p.yNorm ?? (p.y ?? 0) / prevH;
-
+  // --- Normalization Logic (Derived during render) ---
+  // Compute scaled pixel positions from normalized values based on current canvas size
+  const scaledPlaced = useMemo(() => {
+    return placed.map((p) => {
+      // Always center and fill background
+      if (p.tab === "background") {
         return {
           ...p,
-          sizeNorm,
-          xNorm,
-          yNorm,
-          size: sizeNorm * canvasSize.width,
-          x: xNorm * canvasSize.width,
-          y: yNorm * canvasSize.height,
+          x: canvasSize.width / 2,
+          y: canvasSize.height / 2,
+          size: canvasSize.width,
+          xNorm: p.xNorm ?? 0,
+          yNorm: p.yNorm ?? 0,
+          sizeNorm: p.sizeNorm ?? 1,
+          z: 0,
         };
-      })
-    );
+      }
 
-    prevCanvasSizeRef.current = canvasSize;
-  }, [canvasSize.width, canvasSize.height]);
+      if (p.id === "drawing-layer") {
+        return { ...p, size: canvasSize.width, x: 0, y: 0 };
+      }
+
+      // Use existing normalized values, or compute from type config
+      const baseSizeFromType =
+        p.type && SNAP_CONFIG[p.type] ? SNAP_CONFIG[p.type].size : undefined;
+
+      const sizeNorm =
+        p.sizeNorm ??
+        (typeof baseSizeFromType === "number"
+          ? baseSizeFromType / CANVAS_WIDTH
+          : (p.size ?? 0) / CANVAS_WIDTH);
+
+      const xNorm = p.xNorm ?? (p.x ?? 0) / CANVAS_WIDTH;
+      const yNorm = p.yNorm ?? (p.y ?? 0) / CANVAS_HEIGHT;
+
+      return {
+        ...p,
+        sizeNorm,
+        xNorm,
+        yNorm,
+        size: sizeNorm * canvasSize.width,
+        x: xNorm * canvasSize.width,
+        y: yNorm * canvasSize.height,
+      };
+    });
+  }, [placed, canvasSize.width, canvasSize.height]);
 
   // --- Drag Event Listeners ---
 
@@ -467,8 +458,9 @@ export function AvatarStudio() {
       try {
         await navigator.share({ title: "My Avatar", files: [file] });
         return;
-      } catch (err: any) {
-        if (err.name !== "AbortError") console.warn("Share failed:", err);
+      } catch (err: unknown) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        if (!isAbort) console.warn("Share failed:", err);
       }
     }
 
@@ -478,7 +470,7 @@ export function AvatarStudio() {
         new ClipboardItem({ "image/png": blob }),
       ]);
       window.alert("Image copied to clipboard!");
-    } catch (err) {
+    } catch {
       downloadImage(dataUrl); // Fallback
     }
   };
@@ -514,7 +506,7 @@ export function AvatarStudio() {
     gender,
     setGender,
     tab,
-    placed,
+    placed: scaledPlaced,
     setPlaced,
     setDraggingClosetId,
     setDragPos,
